@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Kyotei Analyzer Pro - テレボートPC自動投票</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      width: 320px;
+      background: #090d16;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+      font-size: 12px;
+      line-height: 1.4;
+      padding: 14px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .logo-icon {
+      font-size: 16px;
+    }
+    .logo-text {
+      font-weight: 800;
+      color: #38bdf8;
+      font-size: 13px;
+    }
+    .version-tag {
+      background: #0369a1;
+      color: #e0f2fe;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .status-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 12px;
+    }
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      color: #34d399;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 6px #10b981;
+    }
+    .vote-summary {
+      font-size: 11px;
+      color: #cbd5e1;
+      background: #020617;
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid #1e293b;
+    }
+    .section-title {
+      font-weight: 700;
+      color: #94a3b8;
+      font-size: 11px;
+      margin-bottom: 6px;
+    }
+    .settings-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .checkbox-row input {
+      accent-color: #0284c7;
+      cursor: pointer;
+    }
+    .input-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .input-row label {
+      font-size: 10px;
+      color: #94a3b8;
+    }
+    .input-row input {
+      background: #020617;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      padding: 6px 8px;
+      color: #f8fafc;
+      font-size: 12px;
+      font-family: monospace;
+      outline: none;
+    }
+    .input-row input:focus {
+      border-color: #0284c7;
+    }
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .btn {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 11px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+      text-align: center;
+      text-decoration: none;
+      display: block;
+    }
+    .btn-primary {
+      background: #0284c7;
+      color: #ffffff;
+    }
+    .btn-primary:hover {
+      background: #0369a1;
+    }
+    .btn-outline {
+      background: #1e293b;
+      color: #93c5fd;
+      border: 1px solid #334155;
+    }
+    .btn-outline:hover {
+      background: #334155;
+      color: #ffffff;
+    }
+    .footer {
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px solid #1e293b;
+      text-align: center;
+      font-size: 10px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo-area">
+      <span class="logo-icon">🚤</span>
+      <span class="logo-text">Kyotei PC 自動投票</span>
+    </div>
+    <span class="version-tag">v1.1.0 Ready</span>
+  </div>
+
+  <div class="status-card">
+    <div class="status-indicator">
+      <span class="dot"></span>
+      <span id="conn-status">拡張機能 正常稼働中</span>
+    </div>
+    <div id="vote-summary" class="vote-summary">
+      待機中（Kyotei Analyzer からの指図待ち）
+    </div>
+  </div>
+
+  <div class="settings-group">
+    <span class="section-title">自動投票オプション</span>
+    <label class="checkbox-row">
+      <input type="checkbox" id="auto-buy-cb">
+      <span>全自動購入 (パスワード入力・確認まで自動実行)</span>
+    </label>
+    <div class="input-row">
+      <label>投票用暗証番号 (テレボート4桁数字・任意)</label>
+      <input type="password" id="bet-password-input" placeholder="••••" maxlength="8">
+    </div>
+  </div>
+
+  <div class="btn-group">
+    <button id="open-teleboat-btn" class="btn btn-primary">
+      🌐 テレボート公式PC版を開く (ib.mbrace.or.jp)
+    </button>
+    <button id="save-settings-btn" class="btn btn-outline">
+      💾 設定を保存
+    </button>
+  </div>
+
+  <div class="footer">
+    Kyotei Analyzer Pro 5 × Teleboat PC Bridge
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

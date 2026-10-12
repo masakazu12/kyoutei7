@@ -1,0 +1,337 @@
+/* Kyotei Analyzer Pro 5 - Teleboat PC HUD Stylesheet */
+
+#kyotei-extension-hud {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2147483647;
+  width: 340px;
+  max-width: 90vw;
+  background: #090d16;
+  color: #f1f5f9;
+  border: 2px solid #0284c7;
+  border-radius: 14px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.85), 0 0 15px rgba(2, 132, 199, 0.4);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow: hidden;
+  box-sizing: border-box;
+  animation: k-slide-up 0.25s ease-out;
+}
+
+@keyframes k-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#kyotei-extension-hud * {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.k-hud-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #020617;
+  padding: 10px 14px;
+  border-bottom: 1px solid #1e293b;
+}
+
+.k-header-success {
+  background: #064e3b !important;
+  border-bottom: 1px solid #059669 !important;
+}
+
+.k-hud-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  color: #38bdf8;
+  font-size: 13px;
+}
+
+.k-hud-logo {
+  font-size: 16px;
+}
+
+.k-hud-badge-v1 {
+  background: #0369a1;
+  color: #e0f2fe;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.k-hud-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.k-hud-btn-min,
+.k-hud-btn-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: all 0.15s;
+}
+
+.k-hud-btn-min:hover,
+.k-hud-btn-close:hover {
+  background: #1e293b;
+  color: #ffffff;
+}
+
+.k-hud-content {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.k-hidden {
+  display: none !important;
+}
+
+.k-hud-target-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #0f172a;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+}
+
+.k-target-race {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.k-venue-pill {
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.k-race-no {
+  font-weight: 800;
+  color: #f59e0b;
+  font-size: 13px;
+}
+
+.k-bet-count {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.k-target-amount {
+  color: #34d399;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.k-hud-bets-list {
+  max-height: 110px;
+  overflow-y: auto;
+  background: #030712;
+  border: 1px solid #1f2937;
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+
+.k-bet-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 11px;
+}
+
+.k-bet-row:last-child {
+  border-bottom: none;
+}
+
+.k-bet-idx {
+  color: #64748b;
+  width: 20px;
+}
+
+.k-bet-type {
+  color: #94a3b8;
+  margin-right: 6px;
+}
+
+.k-bet-comb {
+  font-weight: 800;
+  color: #fbbf24;
+  letter-spacing: 1px;
+}
+
+.k-bet-stake {
+  font-weight: 700;
+  color: #10b981;
+  font-family: monospace;
+}
+
+.k-hud-status-badge {
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-weight: 700;
+  text-align: center;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.k-status-idle {
+  background: #1e293b;
+  color: #94a3b8;
+}
+
+.k-status-ready {
+  background: #064e3b;
+  color: #6ee7b7;
+  border: 1px solid #059669;
+}
+
+.k-status-running {
+  background: #1e3a8a;
+  color: #93c5fd;
+  border: 1px solid #3b82f6;
+  animation: k-pulse 1.2s infinite;
+}
+
+.k-status-warn {
+  background: #78350f;
+  color: #fde68a;
+  border: 1px solid #d97706;
+}
+
+@keyframes k-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.k-hud-options {
+  font-size: 11px;
+}
+
+.k-hud-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #cbd5e1;
+  cursor: pointer;
+  user-select: none;
+}
+
+.k-hud-checkbox-label input {
+  accent-color: #0284c7;
+  cursor: pointer;
+}
+
+.k-hud-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.k-btn-primary {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 12px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+  transition: all 0.15s;
+}
+
+.k-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0369a1, #075985);
+  transform: translateY(-1px);
+}
+
+.k-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.k-btn-secondary {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #1e293b;
+  color: #93c5fd;
+  font-weight: 700;
+  font-size: 11px;
+  border: 1px solid #334155;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.k-btn-secondary:hover {
+  background: #334155;
+  color: #ffffff;
+}
+
+.k-hud-body {
+  padding: 14px;
+}
+
+.k-reception-box {
+  background: #064e3b;
+  border: 1px solid #10b981;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.k-reception-label {
+  display: block;
+  font-size: 10px;
+  color: #a7f3d0;
+  margin-bottom: 2px;
+}
+
+.k-reception-no {
+  font-size: 16px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 1px;
+}
+
+.k-hud-desc {
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.4;
+}

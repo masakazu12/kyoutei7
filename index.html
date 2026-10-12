@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // -------------------------------------------------------------
+      // Browser Extension Error Shield (MetaMask, Web3, Inpage scripts)
+      // Completely suppresses non-app external extension connection errors
+      // -------------------------------------------------------------
+      (function() {
+        function isExtensionError(target) {
+          if (!target) return false;
+          try {
+            var str = '';
+            if (typeof target === 'string') {
+              str = target;
+            } else if (typeof target === 'object') {
+              if (target.message) str += target.message + ' ';
+              if (target.reason) {
+                var r = target.reason;
+                str += (r.message || r.stack || String(r)) + ' ';
+              }
+              if (target.filename) str += target.filename + ' ';
+              if (target.stack) str += target.stack + ' ';
+              if (target.error) {
+                var err = target.error;
+                str += (err.message || err.stack || String(err)) + ' ';
+              }
+              if (target.data) {
+                try { str += JSON.stringify(target.data) + ' '; } catch(e) {}
+              }
+              str += String(target) + ' ';
+            }
+            return /chrome-extension:|moz-extension:|safari-extension:|inpage\.js|metamask|Failed to connect to MetaMask/i.test(str);
+          } catch (e) {
+            return false;
+          }
+        }
+
+        // 1. Wrap EventTarget.prototype.addEventListener
+        // Ensures ANY error or unhandledrejection listener registered anywhere in the environment
+        // is wrapped and will never receive extension connection errors.
+        try {
+          var origAddEventListener = EventTarget.prototype.addEventListener;
+          EventTarget.prototype.addEventListener = function(type, listener, options) {
+            if ((type === 'error' || type === 'unhandledrejection') && typeof listener === 'function') {
+              var original = listener;
+              var wrapped = function(event) {
+                if (isExtensionError(event) || (event && isExtensionError(event.reason))) {
+                  if (event && event.preventDefault) event.preventDefault();
+                  if (event && event.stopImmediatePropagation) event.stopImmediatePropagation();
+                  return;
+                }
+                return original.apply(this, arguments);
+              };
+              return origAddEventListener.call(this, type, wrapped, options);
+            }
+            return origAddEventListener.apply(this, arguments);
+          };
+        } catch (e) {}
+
+        // 2. Intercept window.onerror via Object.defineProperty
+        var _onerror = null;
+        try {
+          Object.defineProperty(window, 'onerror', {
+            configurable: true,
+            enumerable: true,
+            get: function() { return _onerror; },
+            set: function(fn) {
+              if (typeof fn !== 'function') {
+                _onerror = null;
+                return;
+              }
+              _onerror = function(msg, url, line, col, err) {
+                if (isExtensionError(msg) || isExtensionError(url) || isExtensionError(err)) {
+                  return true;
+                }
+                return fn.apply(this, arguments);
+              };
+            }
+          });
+        } catch (e) {}
+
+        // 3. Intercept window.onunhandledrejection via Object.defineProperty
+        var _onunhandled = null;
+        try {
+          Object.defineProperty(window, 'onunhandledrejection', {
+            configurable: true,
+            enumerable: true,
+            get: function() { return _onunhandled; },
+            set: function(fn) {
+              if (typeof fn !== 'function') {
+                _onunhandled = null;
+                return;
+              }
+              _onunhandled = function(event) {
+                if (event && (isExtensionError(event) || isExtensionError(event.reason))) {
+                  if (event.preventDefault) event.preventDefault();
+                  return true;
+                }
+                return fn.apply(this, arguments);
+              };
+            }
+          });
+        } catch (e) {}
+
+        // 4. Capture-phase fallback listeners
+        window.addEventListener('error', function(e) {
+          if (isExtensionError(e.filename) || isExtensionError(e.message) || isExtensionError(e.error)) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            return true;
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(e) {
+          if (e && (isExtensionError(e.reason) || isExtensionError(e))) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            return true;
+          }
+        }, true);
+
+        // 5. Intercept postMessage for error suppression
+        try {
+          var origPostMessage = window.postMessage;
+          window.postMessage = function(message, targetOrigin, transfer) {
+            if (isExtensionError(message)) return;
+            return origPostMessage.apply(this, arguments);
+          };
+        } catch (e) {}
+
+        // 6. Suppress console.error / console.warn for extension noise
+        var origConsoleError = console.error;
+        console.error = function() {
+          for (var i = 0; i < arguments.length; i++) {
+            if (isExtensionError(arguments[i])) return;
+          }
+          return origConsoleError.apply(console, arguments);
+        };
+
+        var origConsoleWarn = console.warn;
+        console.warn = function() {
+          for (var i = 0; i < arguments.length; i++) {
+            if (isExtensionError(arguments[i])) return;
+          }
+          return origConsoleWarn.apply(console, arguments);
+        };
+      })();
+    </script>
+    <title>Kyotei Analyzer Pro 5</title>
+    <meta name="description" content="Windows 10/11対応 競艇予想・資金配分・収支シミュレーション投票支援アプリケーション" />
+    <meta property="og:title" content="Kyotei Analyzer Pro 5" />
+    <meta property="og:description" content="Windows 10/11対応 競艇予想・資金配分・収支シミュレーション投票支援アプリケーション" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#020617" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="KyoteiPro5" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-slate-900 text-slate-100 antialiased select-none overflow-hidden">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

@@ -1,0 +1,8 @@
+{
+  "name": "Remix Remix Remix Remix Remix Kyotei Analyzer Pro 5",
+  "description": "Windows 10/11対応 競艇予想・資金配分・収支シミュレーション投票支援アプリケーション",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
