@@ -1,7 +1,7 @@
 import { BetType } from '../types/kyotei';
 
 /**
- * 舟券種別に応じた的中判定および払戻金算出ユーティリティ
+ * 車券種別に応じた的中判定および払戻金算出ユーティリティ (競輪仕様)
  */
 
 export function parseFinishOrder(finishOrder: string): { first: number; second: number; third: number } {
@@ -34,12 +34,12 @@ export function isBetHit(combination: string, betType: BetType = '3t', finishOrd
     return nums.every((n) => targetSet.has(n));
   }
 
-  // 3. 2連単 (2t) - 例: "1-2"
+  // 3. 2車単 (2t) - 例: "1-2"
   if (betType === '2t') {
     return combination === `${first}-${second}`;
   }
 
-  // 4. 2連複 (2f) - 例: "1=2"
+  // 4. 2車複 (2f) - 例: "1=2"
   if (betType === '2f') {
     const rawClean = combination.replace(/[^0-9=]/g, '');
     const nums = rawClean.split('=').map((n) => parseInt(n, 10)).filter((n) => !isNaN(n));

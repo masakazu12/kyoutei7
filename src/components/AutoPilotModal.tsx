@@ -107,13 +107,13 @@ export const AutoPilotModal: React.FC<AutoPilotModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-slate-100">全自動運転システム (Kyotei Autopilot Pro)</h3>
+                <h3 className="text-sm font-bold text-slate-100">全自動運転システム (Keirin Autopilot Pro 5)</h3>
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${meta.badgeClass}`}>
                   {meta.label}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 font-sans">
-                番組巡回・条件判定・予想・オッズ資金配分・自動投票・結果取得の全サイクル自動制御
+                全国43競輪場巡回・ライン展開予想・資金配分・自動投票・結果取得の全サイクル自動制御
               </p>
             </div>
           </div>
@@ -188,9 +188,9 @@ export const AutoPilotModal: React.FC<AutoPilotModalProps> = ({
                       className="mt-0.5 text-blue-500"
                     />
                     <div>
-                      <div className="font-bold text-slate-200">単一会場 連続運転 (1R ➔ 12R)</div>
+                      <div className="font-bold text-slate-200">単一競輪場 連続運転 (1R ➔ 12R)</div>
                       <div className="text-[11px] text-slate-400 mt-0.5">
-                        選択中の開催場（例: 住之江）を第1Rから第12Rまで順次自動進行します。
+                        選択中の開催場（例: 平塚競輪）を第1Rから第12Rまで順次自動進行します。
                       </div>
                     </div>
                   </label>
@@ -210,9 +210,9 @@ export const AutoPilotModal: React.FC<AutoPilotModalProps> = ({
                       className="mt-0.5 text-blue-500"
                     />
                     <div>
-                      <div className="font-bold text-slate-200">全国24場 横断巡回</div>
+                      <div className="font-bold text-slate-200">全国43競輪場 横断巡回</div>
                       <div className="text-[11px] text-slate-400 mt-0.5">
-                        全国各場を1レースごとに順次巡回して分析・投票・確定結果取得を自動反復します。
+                        全国各競輪場を1レースごとに順次巡回して分析・投票・確定結果取得を自動反復します。
                       </div>
                     </div>
                   </label>
@@ -225,7 +225,7 @@ export const AutoPilotModal: React.FC<AutoPilotModalProps> = ({
                       <div className="text-xs font-bold text-cyan-300 flex items-center gap-1">
                         <span>巡回対象会場の選択</span>
                         <span className="text-[10px] text-slate-400">
-                          ({config.targetVenues.length === 0 ? '全24場すべて巡回中' : `${config.targetVenues.length}場を選択中`})
+                          ({config.targetVenues.length === 0 ? '全43競輪場すべて巡回中' : `${config.targetVenues.length}場を選択中`})
                         </span>
                       </div>
                       <div className="flex items-center gap-1 flex-wrap">
@@ -251,29 +251,29 @@ export const AutoPilotModal: React.FC<AutoPilotModalProps> = ({
                               : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
                           }`}
                         >
-                          全24場すべて
+                          全43場すべて
                         </button>
                         <button
                           type="button"
                           onClick={() =>
                             onUpdateConfig({
-                              targetVenues: ['桐生', '蒲郡', '住之江', '丸亀', '下関', '若松', '大村'],
+                              targetVenues: ['平塚', '川崎', '京王閣', '函館', '青森', 'いわき平', '弥彦', '松阪', '四日市', '小倉', '別府', '武雄'],
                             })
                           }
                           className="text-[10px] px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded transition-colors cursor-pointer"
                         >
-                          ナイター (7場)
+                          ナイター場
                         </button>
                         <button
                           type="button"
                           onClick={() =>
                             onUpdateConfig({
-                              targetVenues: ['鳴門', '徳山', '芦屋', '唐津'],
+                              targetVenues: ['小倉', '前橋', '松戸', '伊東', '奈良', '玉野', '高知', '松山', '武雄', '佐世保', '別府', '宇都宮', '四日市', '岸和田'],
                             })
                           }
-                          className="text-[10px] px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded transition-colors cursor-pointer"
+                          className="text-[10px] px-2 py-0.5 bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 border border-indigo-700 rounded transition-colors cursor-pointer"
                         >
-                          モーニング (4場)
+                          ミッドナイト場
                         </button>
                         {onBatchFetchVenues && (
                           <button

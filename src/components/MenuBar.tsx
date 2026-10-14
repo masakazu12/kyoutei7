@@ -336,7 +336,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({
                 className="w-full text-left px-3 py-1.5 hover:bg-slate-800 flex items-center gap-2 text-emerald-300 font-bold cursor-pointer"
               >
                 <Zap className="w-3.5 h-3.5 text-emerald-400" />
-                <span>テレボート公式 実投票マネージャー</span>
+                <span>競輪公式 実投票マネージャー</span>
               </button>
             )}
             {onOpenPCExtension && (
@@ -372,33 +372,33 @@ export const MenuBar: React.FC<MenuBarProps> = ({
                 className="w-full text-left px-3 py-1.5 hover:bg-slate-800 flex items-center gap-2 text-amber-300 font-bold cursor-pointer"
               >
                 <Wallet className="w-3.5 h-3.5 text-amber-400" />
-                <span>テレボート購入限度額（実残高）同期・照合</span>
+                <span>投票購入限度額（実残高）同期・照合</span>
               </button>
             )}
             <div className="border-t border-slate-800 my-1"></div>
             <button
               onClick={() => {
-                openTeleboatWebPortal('PC');
+                if (typeof window !== 'undefined') window.open('https://keirin.jp/', '_blank');
                 close();
               }}
               className="w-full text-left px-3 py-1.5 hover:bg-slate-800 flex items-center gap-2 text-cyan-300 cursor-pointer"
             >
               <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
-              <span>PC版テレボートを開く (ib.mbrace.or.jp)</span>
+              <span>KEIRIN.JP公式を開く (keirin.jp)</span>
             </button>
             <button
               onClick={() => {
-                openTeleboatWebPortal('SP');
+                if (typeof window !== 'undefined') window.open('https://www.winticket.jp/', '_blank');
                 close();
               }}
               className="w-full text-left px-3 py-1.5 hover:bg-slate-800 flex items-center gap-2 text-indigo-300 cursor-pointer"
             >
               <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
-              <span>スマホ版テレボートを開く (spweb.brtb.jp)</span>
+              <span>Winticketを開く (winticket.jp)</span>
             </button>
             <div className="border-t border-slate-800 my-1"></div>
             <div className="px-3 py-1 text-[11px] text-slate-400">
-              テレボート公式互換・購入限度額完全一致＆3連単投票連携
+              競輪公式互換・購入限度額完全一致＆3連単・2車単投票連携
             </div>
           </div>
         )}
@@ -447,7 +447,7 @@ export const MenuBar: React.FC<MenuBarProps> = ({
             )}
             <div className="border-t border-slate-800 my-1"></div>
             <div className="px-3 py-1 text-[11px] text-slate-400 leading-tight">
-              全24場巡回・予想・資金配分・自動投票・結果取得を全自動実行
+              全国43競輪場巡回・ライン予想・資金配分・自動投票・結果取得を全自動実行
             </div>
           </div>
         )}

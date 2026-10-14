@@ -1,5 +1,5 @@
 import React from 'react';
-import { BetCandidate, BetType, BET_TYPE_LABELS } from '../types/kyotei';
+import { BetCandidate, BetType, BET_TYPE_LABELS, LineComposition } from '../types/kyotei';
 import { BOAT_COLORS } from '../constants/venues';
 import {
   Play,
@@ -13,12 +13,14 @@ import {
   Ticket,
   Hash,
   Send,
+  Flag,
 } from 'lucide-react';
 
 interface PredictionSectionProps {
   candidates: BetCandidate[];
   currentBetType: BetType;
   pointCount: number;
+  lines?: LineComposition[]; // 競輪ライン並び予想
   onChangeBetType: (type: BetType) => void;
   onChangePointCount: (points: number) => void;
   onUpdateOdds: (combination: string, odds: number) => void;
@@ -41,7 +43,8 @@ interface PredictionSectionProps {
 export const PredictionSection: React.FC<PredictionSectionProps> = ({
   candidates,
   currentBetType = '3t',
-  pointCount = 5,
+  pointCount = 6,
+  lines,
   onChangeBetType,
   onChangePointCount,
   onUpdateOdds,
@@ -76,23 +79,59 @@ export const PredictionSection: React.FC<PredictionSectionProps> = ({
   const totalStake = candidates.reduce((sum, c) => sum + (c.stake || 0), 0);
   const hasBets = candidates.length > 0;
 
-  const betTypeOptions: BetType[] = ['3t', '3f', '2t', '2f', '1t', '1f', 'wide'];
-  const maxAllowedPoints = BET_TYPE_LABELS[currentBetType]?.maxPoints ?? 12;
-
-  // 点数クイック選択肢（券種の上限に合わせる）
-  const pointOptions = [1, 2, 3, 4, 5, 6, 8, 10, 12].filter(p => p <= maxAllowedPoints);
-
+  const betTypeOptions: BetType[] = ['3t', '3f', '2t', '2f', '1t', 'wide'];
+  const maxAllowedPoints = BET_TYPE_LABELS[currentBetType]?.maxPoints ?? 18;
+  const pointOptions = [1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 18].filter((p) => p <= maxAllowedPoints);
   const activeLabel = BET_TYPE_LABELS[currentBetType]?.label || '3連単';
 
   return (
     <div className="bg-slate-900/90 border border-slate-800 rounded p-3 select-none space-y-2.5">
-      {/* 1. 券種・点数 選択コントロールバー */}
+      {/* 0. 競輪ライン並び展開図バー */}
+      {lines && lines.length > 0 && (
+        <div className="bg-slate-950 p-2.5 rounded border border-slate-800/90">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
+              <Flag className="w-3.5 h-3.5 text-amber-400" />
+              <span>ライン並び予想 (展開図)</span>
+            </div>
+            <span className="text-[10px] text-slate-400">
+              ※先頭(自力) ← 番手 ← 3番手の隊列構成
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {lines.map((line, idx) => (
+              <div
+                key={line.group}
+                className="flex items-center gap-1.5 bg-slate-900 px-2 py-1 rounded border border-slate-800"
+              >
+                <span className="text-[10px] font-bold text-cyan-300 mr-0.5">
+                  {line.label}:
+                </span>
+                <div className="flex items-center gap-1">
+                  {line.racers.map((carNo, rIdx) => (
+                    <React.Fragment key={carNo}>
+                      {rIdx > 0 && <span className="text-slate-600 font-mono text-xs">-</span>}
+                      {renderBoatBadge(carNo)}
+                    </React.Fragment>
+                  ))}
+                </div>
+                <span className="text-[9px] px-1 py-0.2 rounded bg-slate-950 text-slate-400 border border-slate-800 ml-1">
+                  {line.tactics}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 1. 車券種別・点数 選択コントロールバー */}
       <div className="bg-slate-950 p-2 rounded border border-slate-800/90 flex flex-wrap items-center justify-between gap-2">
-        {/* 券種選択 */}
+        {/* 車券種別選択 */}
         <div className="flex items-center gap-1.5 flex-wrap">
           <div className="flex items-center gap-1 text-[11px] font-bold text-slate-300 mr-1">
             <Ticket className="w-3.5 h-3.5 text-blue-400" />
-            <span>舟券種別:</span>
+            <span>車券種別:</span>
           </div>
           <div className="flex items-center gap-1 bg-slate-900 p-0.5 rounded border border-slate-800">
             {betTypeOptions.map((type) => {
@@ -101,15 +140,16 @@ export const PredictionSection: React.FC<PredictionSectionProps> = ({
               return (
                 <button
                   key={type}
+                  type="button"
                   onClick={() => onChangeBetType(type)}
-                  className={`px-2 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                  className={`px-2 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-blue-600 text-white shadow-xs'
+                      ? 'bg-blue-600 text-white shadow-sm'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                   }`}
-                  title={info.desc}
+                  title={info?.desc}
                 >
-                  {info.label}
+                  {info?.label}
                 </button>
               );
             })}
@@ -117,9 +157,9 @@ export const PredictionSection: React.FC<PredictionSectionProps> = ({
         </div>
 
         {/* 点数選択 */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <div className="flex items-center gap-1 text-[11px] font-bold text-slate-300 mr-1">
-            <Hash className="w-3.5 h-3.5 text-emerald-400" />
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 text-[11px] font-bold text-slate-300">
+            <Hash className="w-3.5 h-3.5 text-amber-400" />
             <span>点数:</span>
           </div>
           <div className="flex items-center gap-1 bg-slate-900 p-0.5 rounded border border-slate-800">
@@ -128,14 +168,15 @@ export const PredictionSection: React.FC<PredictionSectionProps> = ({
               return (
                 <button
                   key={pts}
+                  type="button"
                   onClick={() => onChangePointCount(pts)}
-                  className={`px-2 py-0.5 rounded text-xs font-mono font-bold transition-all cursor-pointer ${
+                  className={`w-6 h-6 rounded text-[11px] font-bold flex items-center justify-center transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-emerald-600 text-white shadow-xs'
+                      ? 'bg-amber-500 text-slate-950 shadow-sm'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
                   }`}
                 >
-                  {pts}点
+                  {pts}
                 </button>
               );
             })}
@@ -143,268 +184,224 @@ export const PredictionSection: React.FC<PredictionSectionProps> = ({
         </div>
       </div>
 
-      {/* 2. セクション見出し & コマンドボタン群 */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      {/* 2. アクションボタンバー */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-slate-100 text-xs">
-            【{activeLabel} {pointCount}点買い】 予想候補 & 資金配分
-          </span>
-          <span className="text-[11px] text-slate-400 hidden sm:inline">
-            （{BET_TYPE_LABELS[currentBetType]?.desc}）
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <button
-            onClick={onRunPrediction}
-            className="flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold text-xs shadow transition-colors cursor-pointer"
-            title={`出走表から${activeLabel} ${pointCount}点を生成`}
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>{pointCount}点予想実行</span>
-          </button>
-
-          {/* AI予想実行ボタン */}
+          {/* AI予想ボタン */}
           {onRunAIPrediction && (
             <button
               onClick={onRunAIPrediction}
               disabled={isAILoading}
-              className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded font-black text-xs shadow-md transition-all cursor-pointer border border-purple-400/50 disabled:opacity-50"
-              title="Gemini 3.8 Flash AI による水面・機力・展開深層分析＆AI特選買い目導出"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-600 hover:from-purple-600 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-bold rounded shadow-md transition-all cursor-pointer hover:scale-[1.02]"
+              title="Gemini 3.8 Flash 搭載 競輪AI予想 (ライン展開・深層分析)"
             >
-              <Sparkles className={`w-3.5 h-3.5 text-amber-300 fill-current ${isAILoading ? 'animate-spin' : ''}`} />
-              <span>{isAILoading ? 'AI分析中...' : 'AI予想'}</span>
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-current animate-pulse" />
+              <span>{isAILoading ? 'AI予想分析中...' : '競輪AI予想実行'}</span>
             </button>
           )}
 
+          {/* 予想実行ボタン */}
+          <button
+            onClick={onRunPrediction}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded shadow transition-colors cursor-pointer"
+            title="ライン展開・競走得点・バンク周長から推奨買い目を生成"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" />
+            <span>買い目生成 ({activeLabel} {pointCount}点)</span>
+          </button>
+
+          {/* オッズ再取得 */}
           <button
             onClick={onSimulateOdds}
-            disabled={!hasBets}
-            className="flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded font-medium text-xs transition-colors disabled:opacity-40 cursor-pointer"
-            title={`${activeLabel}のリアルオッズを自動算出`}
+            className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded border border-slate-700 transition-colors cursor-pointer"
+            title="最新オッズをシミュレーション更新"
           >
-            <RefreshCw className="w-3 h-3 text-cyan-400" />
-            <span>オッズ生成</span>
+            <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
+            <span>オッズ同期</span>
           </button>
 
+          {/* 資金配分計算 */}
           <button
             onClick={onCalculateAllocation}
-            disabled={!hasBets || isStopped}
-            className="flex items-center gap-1 px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-xs shadow transition-colors disabled:opacity-40 cursor-pointer"
-            title="設定された方式に基づき資金を配分"
+            className="flex items-center gap-1 px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold rounded shadow transition-colors cursor-pointer"
+            title="設定に基づき目標払戻・オッズ均等配分を計算"
           >
             <Calculator className="w-3.5 h-3.5" />
-            <span>配分計算</span>
+            <span>資金配分</span>
           </button>
+        </div>
 
-          {/* 実投票ボタン */}
+        {/* 投票 & 結果ボタン */}
+        <div className="flex items-center gap-2">
           {onOpenRealVoteModal && (
             <button
               onClick={onOpenRealVoteModal}
-              disabled={!hasBets || totalStake === 0 || isStopped}
-              className="flex items-center gap-1.5 px-3 py-1 rounded bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-md transition-all cursor-pointer border border-emerald-400 disabled:opacity-40"
-              title="テレボート公式へ買い目を展開・実投票マネージャーを開く"
+              disabled={!hasBets || isSkipped || isStopped}
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:hover:from-emerald-600 text-white text-xs font-bold rounded shadow cursor-pointer transition-all hover:scale-[1.02]"
+              title="競輪公式 (KEIRIN.JP / Winticket) へ買い目を送出"
             >
               <Send className="w-3.5 h-3.5" />
-              <span>テレボート実投票</span>
+              <span>競輪投票へ送出</span>
             </button>
           )}
 
-          {/* 自動投票ボタン */}
           {onOpenAutoVote && (
             <button
               onClick={onOpenAutoVote}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded font-black text-xs shadow transition-colors cursor-pointer border ${
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-bold transition-colors cursor-pointer border ${
                 isAutoVoteEnabled
-                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400 ring-1 ring-emerald-300 animate-pulse'
-                  : 'bg-emerald-950 hover:bg-emerald-900 text-emerald-200 border-emerald-600'
+                  ? 'bg-emerald-950 text-emerald-300 border-emerald-500 animate-pulse'
+                  : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
               }`}
-              title="テレボート自動投票マネージャー (買い目・配分連動 / シミュレーション & 実投票)"
             >
-              <Zap className="w-3.5 h-3.5 text-emerald-300 fill-current" />
-              <span>{isAutoVoteEnabled ? '自動投票[ON]' : '自動設定'}</span>
-            </button>
-          )}
-
-          {/* 結果自動取得ボタン */}
-          {onAutoFetchResult && (
-            <button
-              onClick={onAutoFetchResult}
-              className="flex items-center gap-1.5 px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded font-black text-xs shadow transition-colors cursor-pointer"
-              title="公式レース確定結果（確定着順・払戻金・決まり手）を自動取得して的中判定（未配分の場合は自動配分されます）"
-            >
-              <Zap className="w-3.5 h-3.5 fill-current" />
-              <span>結果自動取得</span>
+              <Zap className="w-3.5 h-3.5 text-yellow-400" />
+              <span>{isAutoVoteEnabled ? '自動投票[ON]' : '自動投票設定'}</span>
             </button>
           )}
 
           <button
             onClick={onOpenResultModal}
-            className="flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded font-bold text-xs transition-colors cursor-pointer"
-            title="確定着順と払戻金を手動入力して的中判定"
+            className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded shadow transition-colors cursor-pointer"
           >
-            <CheckCircle className="w-3.5 h-3.5 text-amber-400" />
-            <span>手動確定</span>
+            <CheckCircle className="w-3.5 h-3.5" />
+            <span>着順入力・結果判定</span>
           </button>
         </div>
       </div>
 
       {/* 3. 買い目テーブル */}
-      {candidates.length === 0 ? (
-        <div className="py-8 text-center text-slate-400 text-xs border border-dashed border-slate-800 rounded bg-slate-950/40">
-          「{pointCount}点予想実行」ボタンを押すと、艇評価指数に基づく{activeLabel} {pointCount}点の買い目とオッズが生成されます。
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-950/80 text-slate-400 border-b border-slate-800 text-[11px]">
-                <th className="py-1 px-2 w-12 text-center">順位</th>
-                <th className="py-1 px-3">{activeLabel} 買い目</th>
-                <th className="py-1 px-2 text-right">評価スコア</th>
-                <th className="py-1 px-2 text-right">予測確率</th>
-                <th className="py-1 px-3 text-right">オッズ(倍)</th>
-                <th className="py-1 px-3 text-right bg-emerald-950/20 text-emerald-300">推奨金額</th>
-                <th className="py-1 px-3 text-right">想定払戻額</th>
-                <th className="py-1 px-2 text-right">期待値(EV)</th>
-                <th className="py-1 px-2 text-center w-20">判定</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 font-mono">
-              {candidates.map((c) => {
-                const isOddsLow = c.odds > 0 && c.odds < minOdds;
-                const isOddsHigh = c.odds > maxOdds;
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr className="bg-slate-950/80 text-slate-400 border-b border-slate-800 text-[11px]">
+              <th className="py-1 px-2 w-10 text-center">推奨</th>
+              <th className="py-1 px-2">買い目 (車番)</th>
+              <th className="py-1 px-2 text-center w-24">スジ判定</th>
+              <th className="py-1 px-2 text-right w-20">オッズ</th>
+              <th className="py-1 px-2 text-right w-24">配分金額</th>
+              <th className="py-1 px-2 text-right w-24">想定払戻</th>
+              <th className="py-1 px-2 text-right w-20">期待値(EV)</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800/60 font-mono">
+            {candidates.map((c) => {
+              const isOddsExcluded = c.odds < minOdds || c.odds > maxOdds;
+              const parts = c.combination.split(/[-=]/).map((numStr) => parseInt(numStr, 10));
 
-                // 買い目の視覚的表示
-                const isCompound = c.combination.includes('=');
-                const delimiter = isCompound ? '=' : '-';
+              return (
+                <tr
+                  key={c.combination}
+                  className={`hover:bg-slate-800/40 transition-colors ${
+                    isOddsExcluded ? 'opacity-40 bg-rose-950/10' : ''
+                  }`}
+                >
+                  <td className="py-1 px-2 text-center">
+                    <span
+                      className={`inline-flex items-center justify-center w-4 h-4 rounded text-[10px] font-bold ${
+                        c.rank === 1
+                          ? 'bg-amber-500 text-slate-950'
+                          : c.rank <= 3
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-800 text-slate-400'
+                      }`}
+                    >
+                      {c.rank}
+                    </span>
+                  </td>
 
-                return (
-                  <tr
-                    key={c.combination}
-                    className={`hover:bg-slate-800/40 transition-colors ${
-                      c.stake > 0 ? 'bg-emerald-950/10' : ''
-                    }`}
-                  >
-                    {/* 順位 */}
-                    <td className="py-1.5 px-2 text-center">
-                      <span className="font-bold text-slate-300">#{c.rank}</span>
-                    </td>
+                  {/* 買い目車番バッジ表示 */}
+                  <td className="py-1 px-2">
+                    <div className="flex items-center gap-1 font-bold">
+                      {parts.map((p, i) => (
+                        <React.Fragment key={i}>
+                          {i > 0 && (
+                            <span className="text-slate-500 font-mono text-xs">
+                              {c.combination.includes('=') ? '=' : '-'}
+                            </span>
+                          )}
+                          {renderBoatBadge(p)}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </td>
 
-                    {/* 買い目（可変券種対応） */}
-                    <td className="py-1.5 px-3 font-sans">
-                      <div className="flex items-center gap-1">
-                        {renderBoatBadge(c.first)}
-                        {c.second > 0 && (
-                          <>
-                            <span className="text-slate-500 font-bold">{delimiter}</span>
-                            {renderBoatBadge(c.second)}
-                          </>
-                        )}
-                        {c.third > 0 && (
-                          <>
-                            <span className="text-slate-500 font-bold">{delimiter}</span>
-                            {renderBoatBadge(c.third)}
-                          </>
-                        )}
-                        <span className="ml-2 font-mono text-xs font-bold text-slate-200">
-                          {c.combination}
-                        </span>
-                      </div>
-                    </td>
+                  {/* スジ判定バッジ */}
+                  <td className="py-1 px-2 text-center font-sans">
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                        c.sujiType === 'スジ (本線)'
+                          ? 'bg-emerald-950/80 text-emerald-300 border-emerald-600'
+                          : c.sujiType === 'スジ (ズブズブ)'
+                          ? 'bg-cyan-950/80 text-cyan-300 border-cyan-600'
+                          : c.sujiType === '中穴捲り'
+                          ? 'bg-purple-950/80 text-purple-300 border-purple-600'
+                          : 'bg-slate-800 text-slate-400 border-slate-700'
+                      }`}
+                    >
+                      {c.sujiType || (c.isLineSuji ? 'スジ' : '別線')}
+                    </span>
+                  </td>
 
-                    {/* 評価スコア */}
-                    <td className="py-1.5 px-2 text-right text-slate-300 tabular-nums">
-                      {c.score}
-                    </td>
+                  {/* オッズ */}
+                  <td className="py-1 px-2 text-right">
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={c.odds}
+                      onChange={(e) =>
+                        onUpdateOdds(c.combination, parseFloat(e.target.value) || 1.0)
+                      }
+                      className={`bg-transparent text-right font-bold focus:outline-none focus:border-b focus:border-blue-500 w-16 ${
+                        isOddsExcluded ? 'text-rose-400' : 'text-amber-300'
+                      }`}
+                    />
+                  </td>
 
-                    {/* 予測確率 */}
-                    <td className="py-1.5 px-2 text-right text-slate-200 font-bold tabular-nums">
-                      {c.relativeProb}%
-                    </td>
+                  {/* 配分金額 */}
+                  <td className="py-1 px-2 text-right text-slate-100 font-bold">
+                    ¥{c.stake.toLocaleString()}
+                  </td>
 
-                    {/* オッズ入力 (手入力 & ステッパー) */}
-                    <td className="py-1.5 px-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => onUpdateOdds(c.combination, Math.max(Number((c.odds - 0.5).toFixed(1)), 1.0))}
-                          className="w-4 h-4 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] flex items-center justify-center font-mono cursor-pointer"
-                          title="-0.5倍"
-                        >
-                          -
-                        </button>
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="1.0"
-                          max="999.9"
-                          value={c.odds}
-                          onChange={(e) => onUpdateOdds(c.combination, parseFloat(e.target.value) || 0)}
-                          className={`w-14 bg-slate-950 border text-right rounded px-1 py-0.5 text-xs font-bold tabular-nums focus:outline-none focus:border-blue-500 ${
-                            isOddsLow ? 'border-amber-500 text-amber-300' : 'border-slate-700 text-yellow-400'
-                          }`}
-                        />
-                        <button
-                          onClick={() => onUpdateOdds(c.combination, Number((c.odds + 0.5).toFixed(1)))}
-                          className="w-4 h-4 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] flex items-center justify-center font-mono cursor-pointer"
-                          title="+0.5倍"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </td>
+                  {/* 想定払戻 */}
+                  <td className="py-1 px-2 text-right text-emerald-400 font-bold">
+                    ¥{c.expectedReturn.toLocaleString()}
+                  </td>
 
-                    {/* 推奨購入金額 */}
-                    <td className="py-1.5 px-3 text-right bg-emerald-950/20 font-bold text-emerald-300 tabular-nums text-sm">
-                      {c.stake > 0 ? `${c.stake.toLocaleString()}円` : '-'}
-                    </td>
+                  {/* 期待値 */}
+                  <td className="py-1 px-2 text-right text-slate-300">
+                    <span
+                      className={
+                        c.expectedValue >= 1.5
+                          ? 'text-emerald-400 font-bold'
+                          : c.expectedValue >= 1.0
+                          ? 'text-cyan-300'
+                          : 'text-slate-400'
+                      }
+                    >
+                      {c.expectedValue.toFixed(2)}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
-                    {/* 想定払戻額 */}
-                    <td className="py-1.5 px-3 text-right text-slate-200 tabular-nums font-semibold">
-                      {c.expectedReturn > 0 ? `${c.expectedReturn.toLocaleString()}円` : '-'}
-                    </td>
-
-                    {/* 期待値 */}
-                    <td className="py-1.5 px-2 text-right tabular-nums">
-                      <span
-                        className={`font-bold ${
-                          c.expectedValue >= 1.0 ? 'text-emerald-400' : 'text-slate-400'
-                        }`}
-                      >
-                        {c.expectedValue > 0 ? c.expectedValue.toFixed(2) : '-'}
-                      </span>
-                    </td>
-
-                    {/* 判定備考 */}
-                    <td className="py-1.5 px-2 text-center text-[10px]">
-                      {isOddsLow ? (
-                        <span className="text-amber-400">低オッズ</span>
-                      ) : isOddsHigh ? (
-                        <span className="text-rose-400">高オッズ除外</span>
-                      ) : c.stake > 0 ? (
-                        <span className="text-emerald-400 font-bold">購入対象</span>
-                      ) : (
-                        <span className="text-slate-500">配分待機</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="bg-slate-950 text-slate-200 border-t border-slate-700 font-bold text-xs">
-                <td colSpan={5} className="py-2 px-3 text-right">
-                  合計購入予定額 ({activeLabel} {candidates.length}点):
-                </td>
-                <td className="py-2 px-3 text-right text-emerald-400 font-black font-mono text-sm">
-                  {totalStake.toLocaleString()} 円
-                </td>
-                <td colSpan={3} className="py-2 px-3 text-slate-400 font-mono text-[11px]">
-                  {candidates.length}点登録中
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+      {/* フッター合計金額表示 */}
+      {hasBets && (
+        <div className="flex items-center justify-between pt-1 border-t border-slate-800 text-xs">
+          <span className="text-slate-400">
+            {activeLabel} {candidates.length}点 (スジ車券重点分析)
+          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-slate-300">
+              合計投票額:{' '}
+              <strong className="text-white font-mono font-bold text-sm">
+                ¥{totalStake.toLocaleString()}
+              </strong>
+            </span>
+          </div>
         </div>
       )}
     </div>

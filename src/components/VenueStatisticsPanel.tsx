@@ -85,7 +85,7 @@ export const VenueStatisticsPanel: React.FC<VenueStatisticsPanelProps> = ({
         <div className="flex items-center gap-1.5">
           <Building2 className="w-4 h-4 text-cyan-400" />
           <h4 className="font-bold text-slate-100 text-xs sm:text-sm">
-            全国24場別 収支・的中率・回収率 分析
+            全国43競輪場別 収支・的中率・回収率 分析
           </h4>
           <span className="text-[10px] text-cyan-400 font-bold bg-cyan-950/60 px-1.5 py-0.5 rounded border border-cyan-800/60">
             スクロール対応 (全{venueStats.length}場)
@@ -148,7 +148,7 @@ export const VenueStatisticsPanel: React.FC<VenueStatisticsPanelProps> = ({
             <button
               onClick={onImportRealData}
               className="flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-[11px] rounded shadow-xs cursor-pointer transition-colors"
-              title="全国24場の公式過去レース確定実データを一括インポートして会場別統計を拡充"
+              title="全国43競輪場の公式過去レース確定実データを一括インポートして会場別統計を拡充"
             >
               <CheckCircle2 className="w-3 h-3" />
               <span>実データ読込</span>
@@ -415,7 +415,7 @@ export const VenueStatisticsPanel: React.FC<VenueStatisticsPanelProps> = ({
 
                       {/* 最高払戻 */}
                       <td className="py-1.5 px-2.5 text-right text-slate-400 text-[11px]">
-                        {item.maxPayout > 0 ? `${item.maxPayout.toLocaleString()}円` : '-'}
+                        {(item.maxPayout ?? 0) > 0 ? `${(item.maxPayout ?? 0).toLocaleString()}円` : '-'}
                       </td>
 
                       {/* 操作 */}

@@ -84,16 +84,16 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           <div className="w-5 h-5 rounded bg-blue-600 flex items-center justify-center text-white text-[10px] font-black shadow-sm">
             K5
           </div>
-          <span className="tracking-tight text-slate-100 font-semibold">Kyotei Analyzer Pro 5</span>
+          <span className="tracking-tight text-slate-100 font-semibold">Keirin Analyzer Pro 5</span>
           <span className="text-[10px] px-1.5 py-0.2 bg-slate-800 text-blue-400 rounded font-mono border border-slate-700">
-            Ver 1.0
+            Ver 1.0 (競輪)
           </span>
         </div>
 
         <span className="text-slate-600">|</span>
 
         <div className="flex items-center gap-1.5 text-slate-300 font-medium">
-          <span className="text-emerald-400 font-bold">{currentVenue}</span>
+          <span className="text-emerald-400 font-bold">{currentVenue}競輪</span>
           <span className="font-mono text-amber-300 font-bold">{currentRaceNo}R</span>
         </div>
 
@@ -103,10 +103,10 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             <button
               onClick={onBatchFetchVenues}
               className="flex items-center gap-1 px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] transition-colors shadow-sm cursor-pointer"
-              title="本日開催中の全会場スケジュールを一括同期"
+              title="本日開催中の全競輪場スケジュールを一括同期"
             >
               <RefreshCw className="w-3.5 h-3.5 text-cyan-200" />
-              <span>当日会場を一括取得</span>
+              <span>当日競輪場を一括取得</span>
             </button>
           )}
 
@@ -139,7 +139,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                   ? 'bg-emerald-950/90 hover:bg-emerald-900 text-emerald-200 border-emerald-500 shadow-emerald-950/40'
                   : 'bg-slate-900 hover:bg-slate-800 text-blue-300 border-slate-700 hover:border-blue-400'
               }`}
-              title="PC版 Chrome拡張機能マネージャー (テレボートPC自動投票・ZIPダウンロード)"
+              title="PC版 Chrome拡張機能マネージャー (競輪公式投票連携)"
             >
               <span
                 className={`w-2 h-2 rounded-full ${
@@ -150,7 +150,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             </button>
           )}
 
-          {/* テレボート口座連動ステータス & 自動投票ボタン */}
+          {/* 競輪投票口座連動ステータス & 自動投票ボタン */}
           {onOpenAutoVote && (
             <button
               onClick={onOpenAutoVote}
@@ -159,7 +159,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
                   ? 'bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 border-emerald-500'
                   : 'bg-amber-950/80 hover:bg-amber-900 text-amber-200 border-amber-500'
               }`}
-              title="テレボート口座連動マネージャー (クリックして残高照会・自動投票設定)"
+              title="競輪公式投票口座連動マネージャー (クリックして残高照会・自動投票設定)"
             >
               <span
                 className={`w-2 h-2 rounded-full ${
@@ -168,8 +168,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({
               />
               <span>
                 {isTeleboatConnected
-                  ? `テレボート連動中 (¥${teleboatBalance.toLocaleString()})`
-                  : 'テレボート未連動'}
+                  ? `競輪投票連動中 (¥${teleboatBalance.toLocaleString()})`
+                  : '競輪口座未連動'}
               </span>
             </button>
           )}
@@ -178,10 +178,10 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             <button
               onClick={onOpenAIPrediction}
               className="flex items-center gap-1 px-2.5 py-1 rounded bg-purple-950/80 hover:bg-purple-900 text-purple-200 hover:text-white border border-purple-500 font-bold text-[11px] transition-all shadow-xs cursor-pointer"
-              title="Gemini 3.8 Flash 搭載 競艇AI予想・水面展開深層分析"
+              title="Gemini 3.8 Flash 搭載 競輪AI予想・ライン展開深層分析"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-300 fill-current" />
-              <span>AI予想</span>
+              <span>競輪AI予想</span>
             </button>
           )}
 

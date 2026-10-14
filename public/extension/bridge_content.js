@@ -123,11 +123,62 @@
     announcePresence('KYOTEI_EXTENSION_HEARTBEAT');
   }, 3500);
 
-  // 4. Webアプリからの問い合わせ（PING・投票指図）処理
-  function handleQuery(data) {
+  // 4. Webアプリからの問い合わせ（PING・投票指図・リアルタイム診断プローブ）処理
+  function handleQuery(data, sourceChannel = 'postMessage') {
     if (!data || typeof data !== 'object') return;
 
-    // A. 拡張機能接続テスト (PING)
+    // A. リアルタイム診断プローブ (KYOTEI_DIAGNOSTIC_PING)
+    if (data.type === 'KYOTEI_DIAGNOSTIC_PING') {
+      markDomAsConnected();
+      const probeId = data.probeId || String(Date.now());
+      const channel = data.channel || sourceChannel;
+      const pongData = {
+        type: 'KYOTEI_DIAGNOSTIC_PONG',
+        probeId: probeId,
+        channel: channel,
+        sourceChannel: sourceChannel,
+        version: EXTENSION_VERSION,
+        status: 'READY',
+        timestamp: Date.now(),
+        echoTimestamp: data.timestamp || Date.now(),
+      };
+
+      // 該当チャンネルに応じた確実な返信
+      if (sourceChannel === 'broadcast_channel' || channel === 'broadcast_channel') {
+        try {
+          if (typeof BroadcastChannel !== 'undefined') {
+            const bc = new BroadcastChannel('kyotei_extension_bus');
+            bc.postMessage(pongData);
+            setTimeout(() => { try { bc.close(); } catch(e) {} }, 100);
+          }
+        } catch (e) {}
+      } else if (sourceChannel === 'custom_event' || channel === 'custom_event') {
+        try {
+          if (typeof window !== 'undefined' && window.dispatchEvent) {
+            window.dispatchEvent(new CustomEvent('KYOTEI_DIAGNOSTIC_PONG', { detail: pongData }));
+          }
+          if (typeof document !== 'undefined' && document.dispatchEvent) {
+            document.dispatchEvent(new CustomEvent('KYOTEI_DIAGNOSTIC_PONG', { detail: pongData }));
+          }
+        } catch (e) {}
+      } else {
+        // postMessage & 全体ブロードキャスト
+        broadcastMessage(pongData);
+      }
+
+      // DOMブリッジ側のタイムスタンプ更新
+      try {
+        const el = document.getElementById(BRIDGE_ID);
+        if (el) {
+          el.setAttribute('data-last-probe-time', String(Date.now()));
+          el.setAttribute('data-last-probe-id', probeId);
+        }
+      } catch (e) {}
+
+      return;
+    }
+
+    // B. 拡張機能接続テスト (PING)
     if (
       data.type === 'KYOTEI_CHECK_EXTENSION' ||
       data.type === 'PING' ||
@@ -137,7 +188,7 @@
       return;
     }
 
-    // B. Webアプリからテレボート公式への実投票命令
+    // C. Webアプリからテレボート公式への実投票命令
     if (
       data.type === 'KYOTEI_ANALYZER_DISPATCH_VOTE' ||
       data.type === 'KYOTEI_VOTE' ||
@@ -166,7 +217,7 @@
 
   // A. postMessage リスナー
   window.addEventListener('message', (event) => {
-    handleQuery(event.data);
+    handleQuery(event.data, 'postMessage');
   });
 
   // B. CustomEvent リスナー (window & document)
@@ -174,10 +225,16 @@
     window.addEventListener('KYOTEI_CHECK_EXTENSION', () => {
       announcePresence('KYOTEI_EXTENSION_PONG');
     });
+    window.addEventListener('KYOTEI_DIAGNOSTIC_PING', (ev) => {
+      handleQuery(ev.detail, 'custom_event');
+    });
   }
   if (typeof document !== 'undefined') {
     document.addEventListener('KYOTEI_CHECK_EXTENSION', () => {
       announcePresence('KYOTEI_EXTENSION_PONG');
+    });
+    document.addEventListener('KYOTEI_DIAGNOSTIC_PING', (ev) => {
+      handleQuery(ev.detail, 'custom_event');
     });
   }
 
@@ -187,7 +244,7 @@
       const listenBc = new BroadcastChannel('kyotei_extension_bus');
       listenBc.onmessage = (ev) => {
         if (ev && ev.data) {
-          handleQuery(ev.data);
+          handleQuery(ev.data, 'broadcast_channel');
         }
       };
     }

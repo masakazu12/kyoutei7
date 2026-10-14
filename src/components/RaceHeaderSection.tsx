@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { VENUES } from '../constants/venues';
-import { RaceInfo, WeatherCondition, WindDirection, WeatherType } from '../types/kyotei';
+import { RaceInfo, WeatherCondition, WindDirection, WeatherType, BankLength } from '../types/kyotei';
 import {
   Wind,
-  Waves,
   Sun,
   Clock,
   Calendar,
-  Compass,
   AlertTriangle,
   Globe,
   RefreshCw,
   Zap,
   Sparkles,
   RotateCcw,
+  Flag,
+  Gauge,
 } from 'lucide-react';
 import {
   calculateDeadlineStatus,
@@ -34,7 +34,7 @@ interface RaceHeaderSectionProps {
   isFetchingRace?: boolean;
   isFetchingResult?: boolean;
   windThreshold: number;
-  waveThreshold: number;
+  waveThreshold?: number;
 }
 
 export const RaceHeaderSection: React.FC<RaceHeaderSectionProps> = ({
@@ -49,12 +49,10 @@ export const RaceHeaderSection: React.FC<RaceHeaderSectionProps> = ({
   isFetchingRace = false,
   isFetchingResult = false,
   windThreshold,
-  waveThreshold,
 }) => {
   const [showVenueSelector, setShowVenueSelector] = useState(false);
   const [activeVenues, setActiveVenues] = useState<ActiveVenueSchedule[]>([]);
   const [isLoadingVenues, setIsLoadingVenues] = useState<boolean>(false);
-  const [isBatchFetching, setIsBatchFetching] = useState<boolean>(false);
 
   // 締切カウントダウンの毎秒自動更新
   const [deadlineInfo, setDeadlineInfo] = useState<DeadlineStatus>(() =>
@@ -70,7 +68,7 @@ export const RaceHeaderSection: React.FC<RaceHeaderSectionProps> = ({
     return () => clearInterval(timer);
   }, [race.deadlineTime, race.date]);
 
-  // 本日開催場一覧をロード（propsで渡されたものがあれば優先）
+  // 本日開催競輪場一覧をロード
   useEffect(() => {
     if (activeVenuesList && activeVenuesList.length > 0) {
       setActiveVenues(activeVenuesList);
@@ -83,7 +81,7 @@ export const RaceHeaderSection: React.FC<RaceHeaderSectionProps> = ({
         const venues = await fetchActiveVenues(race.date);
         if (isMounted) setActiveVenues(venues);
       } catch (e) {
-        console.error('Failed to load active venues:', e);
+        console.error('Failed to load active Keirin velodromes:', e);
       } finally {
         if (isMounted) setIsLoadingVenues(false);
       }
@@ -95,117 +93,72 @@ export const RaceHeaderSection: React.FC<RaceHeaderSectionProps> = ({
   }, [race.date, activeVenuesList]);
 
   const windDirections: WindDirection[] = ['向かい風', '追い風', '左横風', '右横風', '無風'];
-  const weatherTypes: WeatherType[] = ['晴', '曇', '雨', '雪'];
+  const weatherTypes: WeatherType[] = ['晴', '曇', '雨', '小雨', '雪'];
+  const grades: RaceInfo['grade'][] = ['GP', 'GI', 'GII', 'GIII', 'FI', 'FII', 'ミッドナイト', 'ガールズ'];
 
   const isWindOver = race.weather.windSpeed >= windThreshold;
-  const isWaveOver = race.weather.waveHeight >= waveThreshold;
+  const currentVenueInfo = VENUES.find((v) => v.name === race.venue);
 
-  // 当日開催会場の一括取得ハンドラ
-  const handleTriggerBatchFetch = async () => {
-    setIsBatchFetching(true);
-    try {
-      if (onBatchFetchVenues) {
-        await onBatchFetchVenues();
-      } else {
-        const venues = await fetchActiveVenues(race.date);
-        setActiveVenues(venues);
-      }
-    } finally {
-      setIsBatchFetching(false);
-    }
-  };
-
-  // 開催場選択ハンドラ（出走表データも直接取得）
+  // 会場変更ハンドラ
   const handleSelectVenue = (venueName: string) => {
+    const target = VENUES.find((v) => v.name === venueName);
+    const newDeadline = getStandardDeadlineTime(venueName, race.raceNo);
+    onUpdateRace({
+      venue: venueName,
+      bankLength: (target?.bankLength as BankLength) || 400,
+      straightLength: target?.straightLength || 54.0,
+      deadlineTime: newDeadline,
+    });
     setShowVenueSelector(false);
     if (onFetchRace) {
       onFetchRace(venueName, race.raceNo);
-    } else {
-      const updatedDeadline = getStandardDeadlineTime(venueName, race.raceNo);
-      onUpdateRace({
-        venue: venueName,
-        deadlineTime: updatedDeadline,
-      });
     }
   };
 
-  // レース番号選択ハンドラ（出走表データも直接取得）
-  const handleSelectRaceNo = (rNo: number) => {
+  // レース番号変更ハンドラ
+  const handleSelectRaceNo = (newRaceNo: number) => {
+    const newDeadline = getStandardDeadlineTime(race.venue, newRaceNo);
+    onUpdateRace({
+      raceNo: newRaceNo,
+      raceTitle: `第${newRaceNo}R ${newRaceNo === 12 ? '決勝' : newRaceNo >= 10 ? '特選' : '予選'}`,
+      deadlineTime: newDeadline,
+    });
     if (onFetchRace) {
-      onFetchRace(race.venue, rNo);
-    } else {
-      const updatedDeadline = getStandardDeadlineTime(race.venue, rNo);
-      let title = `第${rNo}R 一般戦`;
-      if (rNo === 12) title = `第12R 優勝戦`;
-      else if (rNo === 11) title = `第11R 準優勝戦`;
-      else if (rNo === 10) title = `第10R 特別選抜戦`;
-      else if (rNo === 9) title = `第9R 予選特選`;
-      else if (rNo === 1) title = `第1R 朝ガチ予選`;
-
-      onUpdateRace({
-        raceNo: rNo,
-        raceTitle: title,
-        deadlineTime: updatedDeadline,
-      });
+      onFetchRace(race.venue, newRaceNo);
     }
   };
 
-  // 締切時刻を公式標準タイムテーブルにリセット
   const handleResetDeadline = () => {
-    const stdTime = getStandardDeadlineTime(race.venue, race.raceNo);
-    onUpdateRace({ deadlineTime: stdTime });
+    const std = getStandardDeadlineTime(race.venue, race.raceNo);
+    onUpdateRace({ deadlineTime: std });
   };
 
   return (
-    <div className="bg-slate-900/95 border border-slate-800 rounded p-3 select-none flex flex-col gap-2.5 shadow-md">
-      {/* 1. 本日開催場クイックセレクターバー */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs border-b border-slate-800/80">
-        <div className="flex items-center gap-1.5 shrink-0">
-          <div className="flex items-center gap-1 text-slate-400 font-bold text-[11px]">
-            <Globe className="w-3.5 h-3.5 text-blue-400" />
-            <span>本日開催場:</span>
-          </div>
-
-          {/* 当日会場一括取得ボタン */}
-          <button
-            type="button"
-            onClick={handleTriggerBatchFetch}
-            disabled={isBatchFetching}
-            className="px-2 py-0.5 rounded bg-blue-900/90 hover:bg-blue-800 border border-blue-500 text-cyan-200 hover:text-white font-black text-[10px] flex items-center gap-1 cursor-pointer transition-all shadow-xs disabled:opacity-50"
-            title="全国24場から本日の全開催場を一括取得・同期"
-          >
-            <RefreshCw className={`w-3 h-3 text-cyan-300 ${isBatchFetching ? 'animate-spin' : ''}`} />
-            <span>{isBatchFetching ? '一括取得中...' : '当日会場を一括取得'}</span>
-          </button>
-        </div>
+    <div className="bg-slate-900/90 border border-slate-800 rounded p-3 select-none space-y-2.5">
+      {/* 1. 本日開催中 競輪場クイック選択バー */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs border-b border-slate-800/80">
+        <span className="text-[11px] font-bold text-slate-400 shrink-0 flex items-center gap-1">
+          <Globe className="w-3.5 h-3.5 text-cyan-400" />
+          <span>開催競輪場:</span>
+        </span>
 
         <div className="flex items-center gap-1.5 flex-nowrap">
-          {activeVenues.map((v) => {
-            const isCurrent = race.venue === v.venueName;
+          {VENUES.slice(0, 10).map((v) => {
+            const isSelected = race.venue === v.name;
             return (
               <button
                 key={v.code}
-                onClick={() => handleSelectVenue(v.venueName)}
-                className={`px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1 transition-all shrink-0 cursor-pointer ${
-                  isCurrent
-                    ? 'bg-blue-600 text-white shadow-xs ring-1 ring-blue-400'
-                    : 'bg-slate-950 text-slate-300 hover:bg-slate-800 border border-slate-800'
+                onClick={() => handleSelectVenue(v.name)}
+                className={`px-2 py-0.5 rounded text-[11px] font-bold shrink-0 transition-all flex items-center gap-1 cursor-pointer border ${
+                  isSelected
+                    ? 'bg-blue-600 text-white border-blue-400 shadow-sm scale-102'
+                    : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white'
                 }`}
-                title={`${v.venueName} ${v.title} (${v.category})`}
               >
-                <span>{v.venueName}</span>
-                <span
-                  className={`text-[9px] px-1 rounded font-normal ${
-                    v.grade === 'SG'
-                      ? 'bg-amber-400 text-slate-950 font-bold'
-                      : v.grade === 'G1'
-                      ? 'bg-cyan-500 text-slate-950 font-bold'
-                      : 'text-slate-400'
-                  }`}
-                >
-                  {v.grade}
+                <span>{v.name}</span>
+                <span className="text-[9px] px-1 py-0.2 rounded bg-slate-900 text-cyan-300 font-mono">
+                  {v.bankLength}m
                 </span>
-                <span className="text-[9px] text-slate-400 font-mono">{v.currentRaceNo}R</span>
               </button>
             );
           })}
@@ -216,31 +169,31 @@ export const RaceHeaderSection: React.FC<RaceHeaderSectionProps> = ({
             onClick={onOpenFetchRace}
             className="ml-auto text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-0.5 shrink-0 cursor-pointer underline"
           >
-            <span>全24場一覧</span>
+            <span>全43場一覧</span>
           </button>
         )}
       </div>
 
       {/* 2. メインヘッダー領域 */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-center">
-        {/* エリア A-1: 開催場 & レースタイトル & 日時 & 締切電光盤 */}
+        {/* エリア A-1: 開催場 & レースタイトル & 日時 & 締切 */}
         <div className="lg:col-span-5 flex items-center gap-3">
           {/* 開催場バッジ */}
           <div className="relative">
             <button
               onClick={() => setShowVenueSelector(!showVenueSelector)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-950/90 hover:bg-blue-900 border border-blue-500 rounded text-blue-100 font-black text-base shadow-sm transition-colors cursor-pointer"
-              title="開催場を変更"
+              title="開催競輪場を変更"
             >
-              <span>{race.venue}</span>
+              <span>{race.venue}競輪</span>
               <span className="text-[10px] text-blue-400">▼</span>
             </button>
 
-            {/* 24場クイックセレクター */}
+            {/* 43場クイックセレクター */}
             {showVenueSelector && (
-              <div className="absolute left-0 top-full mt-1 w-80 bg-slate-900 border border-slate-700 shadow-2xl rounded p-2 z-50 animate-in fade-in zoom-in-95">
+              <div className="absolute left-0 top-full mt-1 w-96 bg-slate-900 border border-slate-700 shadow-2xl rounded p-2.5 z-50 animate-in fade-in zoom-in-95 max-h-80 overflow-y-auto">
                 <div className="text-[11px] font-bold text-slate-400 mb-1.5 px-1 flex justify-between">
-                  <span>全国24ボートレース場を選択</span>
+                  <span>全国43競輪場を選択</span>
                   <button
                     onClick={() => setShowVenueSelector(false)}
                     className="text-slate-400 hover:text-white cursor-pointer"
@@ -253,13 +206,14 @@ export const RaceHeaderSection: React.FC<RaceHeaderSectionProps> = ({
                     <button
                       key={v.code}
                       onClick={() => handleSelectVenue(v.name)}
-                      className={`px-2 py-1 text-xs rounded text-center transition-colors cursor-pointer ${
+                      className={`px-2 py-1 text-xs rounded text-center transition-colors cursor-pointer flex flex-col items-center ${
                         race.venue === v.name
                           ? 'bg-blue-600 text-white font-bold'
                           : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
                       }`}
                     >
-                      {v.name}
+                      <span>{v.name}</span>
+                      <span className="text-[9px] font-mono text-cyan-300">{v.bankLength}m</span>
                     </button>
                   ))}
                 </div>
@@ -274,21 +228,31 @@ export const RaceHeaderSection: React.FC<RaceHeaderSectionProps> = ({
                 value={race.raceTitle}
                 onChange={(e) => onUpdateRace({ raceTitle: e.target.value })}
                 className="bg-transparent font-bold text-slate-100 text-sm border-b border-dashed border-slate-700 hover:border-blue-400 focus:outline-none focus:border-blue-500 w-44"
-                placeholder="第12R 優勝戦"
+                placeholder="第12R 決勝"
               />
 
-              {/* 番組表再取得ボタン */}
-              {onFetchRace && (
-                <button
-                  onClick={() => onFetchRace(race.venue, race.raceNo)}
-                  disabled={isFetchingRace}
-                  className="px-2 py-0.5 rounded bg-blue-900 hover:bg-blue-800 border border-blue-600 text-blue-200 hover:text-white font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-colors disabled:opacity-50"
-                  title="出走表・選手勝率・モーター・展示を再取得"
-                >
-                  <RefreshCw className={`w-3 h-3 text-cyan-400 ${isFetchingRace ? 'animate-spin' : ''}`} />
-                  <span>{isFetchingRace ? '取得中' : '番組取得'}</span>
-                </button>
-              )}
+              {/* グレード選択 */}
+              <select
+                value={race.grade || 'FI'}
+                onChange={(e) => onUpdateRace({ grade: e.target.value as RaceInfo['grade'] })}
+                className="bg-slate-950 text-amber-300 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] font-bold"
+              >
+                {grades.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+
+              {/* 車立て切替 (7車 / 9車) */}
+              <button
+                type="button"
+                onClick={() => onUpdateRace({ carCount: race.carCount === 7 ? 9 : 7 })}
+                className="px-1.5 py-0.5 rounded bg-slate-950 border border-slate-700 text-slate-200 text-[10px] font-bold font-mono hover:border-slate-500 cursor-pointer"
+                title="7車立て / 9車立ての切り替え"
+              >
+                {race.carCount || 7}車
+              </button>
             </div>
 
             <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-1 font-mono">
@@ -302,7 +266,7 @@ export const RaceHeaderSection: React.FC<RaceHeaderSectionProps> = ({
                 />
               </div>
 
-              {/* 締切時刻・電光盤表示（見やすく正確なカウントダウン & 状態表示） */}
+              {/* 締切時刻・電光盤表示 */}
               <div
                 className={`flex items-center gap-1 px-2 py-0.5 rounded border transition-colors ${
                   deadlineInfo.status === 'soon'
@@ -311,7 +275,6 @@ export const RaceHeaderSection: React.FC<RaceHeaderSectionProps> = ({
                     ? 'bg-slate-950 border-slate-800 text-slate-400'
                     : 'bg-slate-950 border-slate-800 text-slate-200'
                 }`}
-                title="締切時刻（直接編集可能 / 毎秒リアルタイム計算）"
               >
                 <Clock
                   className={`w-3.5 h-3.5 ${
@@ -324,34 +287,27 @@ export const RaceHeaderSection: React.FC<RaceHeaderSectionProps> = ({
                 />
                 <span className="text-[10px] font-sans font-bold text-slate-400">締切</span>
 
-                {/* HH:mm 入力 (横幅をw-16に拡張して20:45等が見切れず完璧に収まる) */}
                 <input
                   type="text"
                   value={race.deadlineTime}
                   onChange={(e) => onUpdateRace({ deadlineTime: e.target.value })}
                   className="w-14 bg-transparent text-center text-amber-300 font-mono font-bold text-xs focus:outline-none focus:border-b focus:border-amber-400 tabular-nums"
-                  placeholder="20:45"
-                  title="締切時刻 (HH:mm)"
+                  placeholder="16:35"
                 />
 
-                {/* 状態バッジ & 残り時間 */}
                 <span
                   className={`text-[9px] font-sans font-bold px-1.5 py-0.2 rounded border ${
                     deadlineInfo.status === 'soon'
                       ? 'bg-amber-500 text-slate-950 border-amber-400 animate-pulse font-black'
                       : deadlineInfo.status === 'closed'
-                      ? race.date < new Date().toISOString().slice(0, 10)
-                        ? 'bg-blue-950/80 text-blue-300 border-blue-700'
-                        : 'bg-rose-950/80 text-rose-300 border-rose-800'
+                      ? 'bg-rose-950/80 text-rose-300 border-rose-800'
                       : 'bg-emerald-950/80 text-emerald-300 border-emerald-700'
                   }`}
                 >
                   {deadlineInfo.status === 'soon'
                     ? `まもなく締切 (${deadlineInfo.formattedRemaining})`
                     : deadlineInfo.status === 'closed'
-                    ? race.date < new Date().toISOString().slice(0, 10)
-                      ? '過去レース (投票・判定可)'
-                      : '締切済 (本日投票不可)'
+                    ? '締切済'
                     : `発売中 (${deadlineInfo.formattedRemaining})`}
                 </span>
 
@@ -379,15 +335,24 @@ export const RaceHeaderSection: React.FC<RaceHeaderSectionProps> = ({
                   ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30 scale-105 ring-1 ring-amber-300'
                   : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white border border-slate-700'
               }`}
-              title={`第${rNo}Rの出走表番組データを取得`}
+              title={`第${rNo}Rの出走表番組データを表示`}
             >
               {rNo}
             </button>
           ))}
         </div>
 
-        {/* エリア D & クイックアクション: 天候条件 & 結果自動取得 */}
+        {/* エリア D: バンク周長特性 & 天候条件 & 結果自動取得 */}
         <div className="lg:col-span-4 flex items-center justify-end gap-2 text-xs">
+          {/* バンク情報バッジ (周長・みなし直線) */}
+          <div className="flex items-center gap-1.5 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
+            <Gauge className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="font-bold text-slate-200">{race.bankLength || 400}mバンク</span>
+            <span className="text-[10px] text-slate-400 font-mono">
+              (直線{race.straightLength || 54}m)
+            </span>
+          </div>
+
           {/* 天候選択 */}
           <div className="flex items-center gap-1 bg-slate-950 px-2 py-1 rounded border border-slate-800">
             <Sun className="w-3.5 h-3.5 text-yellow-400" />
@@ -427,39 +392,16 @@ export const RaceHeaderSection: React.FC<RaceHeaderSectionProps> = ({
             <span className="text-[10px] text-slate-400">m</span>
           </div>
 
-          {/* 波高入力 */}
-          <div
-            className={`flex items-center gap-1 px-2 py-1 rounded border transition-colors ${
-              isWaveOver
-                ? 'bg-amber-950/60 border-amber-500 text-amber-300 animate-pulse'
-                : 'bg-slate-950 border-slate-800 text-slate-200'
-            }`}
-            title={`波高見送り閾値: ${waveThreshold}cm 以上`}
-          >
-            <Waves className={`w-3.5 h-3.5 ${isWaveOver ? 'text-amber-400' : 'text-blue-400'}`} />
-            <span className="text-[11px] text-slate-400">波:</span>
-            <input
-              type="number"
-              step="1"
-              min="0"
-              max="50"
-              value={race.weather.waveHeight}
-              onChange={(e) => onUpdateWeather({ waveHeight: parseInt(e.target.value) || 0 })}
-              className="w-7 bg-transparent text-right font-mono font-bold focus:outline-none text-xs tabular-nums"
-            />
-            <span className="text-[10px] text-slate-400">cm</span>
-          </div>
-
-          {/* 結果自動取得ボタン */}
+          {/* 結果取得ボタン */}
           {onAutoFetchResult && (
             <button
               onClick={onAutoFetchResult}
               disabled={isFetchingResult}
               className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded font-black text-[11px] shadow flex items-center gap-1 cursor-pointer transition-colors disabled:opacity-50 shrink-0"
-              title="公式レース確定結果（確定着順・払戻金・決まり手）を自動取得"
+              title="公式レース確定着順・払戻金を反映"
             >
               <Zap className="w-3.5 h-3.5 fill-current" />
-              <span>{isFetchingResult ? '取得中...' : '結果自動取得'}</span>
+              <span>{isFetchingResult ? '取得中...' : '結果取得'}</span>
             </button>
           )}
         </div>

@@ -116,10 +116,10 @@ export const AutoPilotControlBar: React.FC<AutoPilotControlBarProps> = ({
                 ? 'bg-cyan-950/70 border-cyan-500/80 text-cyan-200 hover:bg-cyan-900/80 shadow-sm shadow-cyan-950'
                 : 'bg-amber-950/70 border-amber-500/80 text-amber-200 hover:bg-amber-900/80 shadow-sm shadow-amber-950'
             }`}
-            title="クリックで【全国24場巡回】と【単一会場連続】を即座に切り替え"
+            title="クリックで【全国43競輪場巡回】と【単一会場連続】を即座に切り替え"
           >
             <RotateCw className="w-3 h-3 text-current" />
-            <span>{isAllVenues ? '全国24場 横断巡回' : `単一会場連続 (${currentVenue || '現会場'})`}</span>
+            <span>{isAllVenues ? '全国43競輪場 横断巡回' : `単一競輪場連続 (${currentVenue || '現会場'})`}</span>
             <span className="text-[9px] opacity-75 ml-0.5 underline">切替</span>
           </button>
         )}

@@ -175,7 +175,7 @@ export const StatisticsBar: React.FC<StatisticsBarProps> = ({
             <button
               onClick={onImportRealData}
               className="flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded font-bold text-xs transition-colors shadow-xs cursor-pointer"
-              title="公式確定実データ（全24場・過去実績）を一括インポート"
+              title="公式確定実データ（全国43競輪場・過去実績）を一括インポート"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">実データ</span>読込

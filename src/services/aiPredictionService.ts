@@ -1,7 +1,7 @@
 /**
- * AI予想エンジン (Gemini 3.8 Flash 搭載)
- * 競艇場の水面特性・気象風波・各艇の勝率・モーター2連対率・スタート展示タイムを総合分析し、
- * 本命・対抗・穴目の買い目と勝負気配・展開予測コメントを導出します。
+ * 競輪AI予想エンジン (Gemini 3.8 Flash 搭載)
+ * 競輪場のバンク周長・カント・直線長、ライン並び予想、競走得点・脚質・直近成績を深層分析し、
+ * 本命ライン・対抗別線・穴捲りの買い目と展開予測を導出します。
  */
 
 import { GoogleGenAI } from '@google/genai';
@@ -11,10 +11,10 @@ import { simulateRealisticOdds } from './predictionEngine';
 import { allocateMoney } from './moneyAllocator';
 
 export interface AIPredictionResult {
-  headline: string; // 例:「1号艇の逃げ盤石も、3号艇のまくり差し警戒」
+  headline: string; // 例:「近畿ライン主導権で番手抜け出し濃厚。別線捲りの強襲に警戒」
   analysisOverview: string; // 総合展開見解
   confidenceLevel: 'S' | 'A' | 'B' | 'C'; // 自信度
-  weatherImpact: string; // 風・波によるコース影響分析
+  weatherImpact: string; // バンク特性・風速影響
   axisBoat: {
     boatNumber: number;
     racerName: string;
@@ -30,15 +30,12 @@ export interface AIPredictionResult {
     racerName: string;
     reason: string;
   };
-  aiCandidates: BetCandidate[]; // AIが導き出した厳選5点（オッズ・資金配分付き）
-  tacticalKey: string; // 「スリット同体ならイン逃げ」「4カド攻めなら外追走」等
+  aiCandidates: BetCandidate[]; // AIが導き出した厳選買い目（オッズ・資金配分付き）
+  tacticalKey: string; // 展開の鍵（例:「赤板からの主導権争いで突っ張り先行なら番手差し」）
   rawResponse?: string;
   isAiPowered: boolean;
 }
 
-/**
- * Gemini API によるAI競艇予想を生成
- */
 export async function generateAIPrediction({
   race,
   scoredBoats,
@@ -56,221 +53,175 @@ export async function generateAIPrediction({
 
   const venueInfo = VENUES.find((v) => v.name === race.venue);
 
-  // Gemini API キーが設定されている場合はリアルAPI呼び出し
   if (apiKey) {
     try {
       const ai = new GoogleGenAI({ apiKey });
-      const prompt = `あなたはプロの競艇（ボートレース）専属AI予想評論家・データアナリストです。
-以下のレース情報、出走艇データ、水面・気象条件を精査し、3連単の本命・対抗・穴目の買い目5点と展開予想をJSON形式で出力してください。
+      const linesText = (race.lines || [])
+        .map((l) => `・${l.label}: 車番 [${l.racers.join(' - ')}] (戦法: ${l.tactics})`)
+        .join('\n');
+
+      const racersText = race.boats
+        .map(
+          (b) =>
+            `・${b.boatNumber}番車: ${b.name} (${b.branch} ${b.era || ''}期 / ${b.grade}) / 競走得点 ${b.score} / 脚質 ${b.style} / ギヤ ${b.gear} / 勝率 ${b.winRate}% / B数 ${b.bCount} / ライン役割: ${b.lineRole}`
+        )
+        .join('\n');
+
+      const prompt = `あなたはプロの競輪専属AI予想評論家・データアナリストです。
+以下のレース情報、出走選手データ、ライン構成、バンク特性を精査し、3連単の推奨買い目6点とライン展開予想をJSON形式で出力してください。
 
 【対象レース】
-・開催場: ${race.venue} (${venueInfo?.region || ''} / ${venueInfo?.waterType || ''}水面 / 特徴: ${venueInfo?.characteristics || '標準水面'})
-・レース: 第${race.raceNo}R ${race.raceTitle}
-・気象条件: 天候 ${race.weather.weather}、風向 ${race.weather.windDirection}、風速 ${race.weather.windSpeed}m/s、波高 ${race.weather.waveHeight}cm
+・競輪場: ${race.venue} (${venueInfo?.region || ''} / 周長 ${race.bankLength}m / みなし直線 ${race.straightLength}m / 特徴: ${venueInfo?.characteristics || '標準バンク'})
+・レース: 第${race.raceNo}R ${race.raceTitle} (${race.grade})
+・車立て: ${race.carCount}車立て
+・天候: ${race.weather.weather} / 風向 ${race.weather.windDirection} / 風速 ${race.weather.windSpeed}m/s
 
-【出走艇データ (1号艇〜6号艇)】
-${race.boats
-  .map(
-    (b) =>
-      `・${b.boatNumber}号艇: ${b.name} (${b.grade}) / 全国勝率 ${b.winRate} / 2連対率 ${b.secondRate}% / モーター2連対率 ${b.motorSecondRate}% / 展示タイム ${b.exhibitionTime}秒 / 進入予想 ${b.course}コース`
-  )
-  .join('\n')}
+【ライン並び予想】
+${linesText || '細切れ戦'}
+
+【出走選手データ】
+${racersText}
 
 【出力フォーマット要求】
-必ず以下のJSON形式のみを出力してください（Markdownのバッククォート\`\`\`jsonも含めて可）:
+必ず以下のJSON形式のみを出力してください:
 {
-  "headline": "1行の鋭い見出し（例: イン逃げ有力も、4号艇の角まくり連動に警戒）",
-  "analysisOverview": "このレースのレース展開予測・水面と風の影響に関するプロの見解（200文字以内）",
+  "headline": "1行の見出し（例: 近畿ラインの主導権濃厚。別線捲り強襲と番手差しの攻防）",
+  "analysisOverview": "このレースのライン展開予想・主導権争いとバンク特性に関する見解（200文字以内）",
   "confidenceLevel": "S" | "A" | "B" | "C",
-  "weatherImpact": "風向・風速・波高がイン有利か外有利かに与える影響の解説",
-  "axisBoat": { "boatNumber": 1, "racerName": "選手名", "reason": "軸に推す理由" },
+  "weatherImpact": "バンク周長(${race.bankLength}m)と直線距離がスジ決着またはスジ違い捲りに与える影響の解説",
+  "axisBoat": { "boatNumber": 1, "racerName": "選手名", "reason": "本命軸に推す理由" },
   "rivalBoat": { "boatNumber": 2, "racerName": "選手名", "reason": "対抗の理由" },
-  "holeBoat": { "boatNumber": 4, "racerName": "選手名", "reason": "穴・逆転の理由" },
-  "tacticalKey": "勝負を分けるスリット・1マーク攻防のキーポイント",
+  "holeBoat": { "boatNumber": 3, "racerName": "選手名", "reason": "穴・別線一発の理由" },
+  "tacticalKey": "赤板〜打鐘(ジャン)〜最終バックの展開の鍵",
   "top5Combos": [
-    { "first": 1, "second": 2, "third": 3, "score": 95, "prob": 28 },
-    { "first": 1, "second": 2, "third": 4, "score": 88, "prob": 22 },
-    { "first": 1, "second": 3, "third": 2, "score": 82, "prob": 18 },
-    { "first": 1, "second": 3, "third": 4, "score": 75, "prob": 14 },
-    { "first": 2, "second": 1, "third": 3, "score": 70, "prob": 10 }
+    { "first": 1, "second": 2, "third": 3, "score": 95, "prob": 26 },
+    { "first": 2, "second": 1, "third": 3, "score": 88, "prob": 22 },
+    { "first": 1, "second": 2, "third": 5, "score": 82, "prob": 18 },
+    { "first": 4, "second": 3, "third": 1, "score": 75, "prob": 14 },
+    { "first": 1, "second": 3, "third": 2, "score": 70, "prob": 12 },
+    { "first": 2, "second": 1, "third": 5, "score": 65, "prob": 8 }
   ]
 }`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-3.8-flash',
         contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          temperature: 0.3,
-        },
       });
 
       const text = response.text || '';
-      const parsed = JSON.parse(text);
+      const cleanJson = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
 
-      const rawCombos: { first: number; second: number; third: number; score: number; prob: number }[] =
-        Array.isArray(parsed.top5Combos) ? parsed.top5Combos : [];
-
-      const candidates: BetCandidate[] = rawCombos.slice(0, 5).map((item, index) => {
-        const combination = `${item.first}-${item.second}-${item.third}`;
-        return {
-          rank: index + 1,
-          combination,
-          first: item.first,
-          second: item.second,
-          third: item.third,
-          score: item.score || 80 - index * 5,
-          relativeProb: item.prob || 20,
-          odds: 5.0, // 後でオッズ計算
+      const combos = parsed.top5Combos || [];
+      const oddsMap = simulateRealisticOdds(
+        combos.map((c: any) => ({
+          rank: 1,
+          combination: `${c.first}-${c.second}-${c.third}`,
+          first: c.first,
+          second: c.second,
+          third: c.third,
+          score: c.score || 80,
+          relativeProb: c.prob || 20,
+          odds: 10,
           stake: 0,
           expectedReturn: 0,
-          expectedValue: 0,
+          expectedValue: 1,
+        })),
+        settings.defaultBetType || '3t'
+      );
+
+      const rawCandidates: BetCandidate[] = combos.map((c: any, index: number) => {
+        const comb = `${c.first}-${c.second}-${c.third}`;
+        const odds = oddsMap[comb] || Number((6 + index * 4.5).toFixed(1));
+        const r1 = race.boats.find((b) => b.boatNumber === c.first);
+        const r2 = race.boats.find((b) => b.boatNumber === c.second);
+        const isLineSuji = !!(r1 && r2 && r1.lineGroup === r2.lineGroup && r1.lineGroup > 0);
+
+        return {
+          rank: index + 1,
+          combination: comb,
+          betType: '3t',
+          first: c.first,
+          second: c.second,
+          third: c.third,
+          score: c.score || 80,
+          relativeProb: c.prob || 20,
+          odds,
+          stake: 0,
+          expectedReturn: 0,
+          expectedValue: Number((((c.prob || 20) / 100) * odds).toFixed(2)),
+          isLineSuji,
+          sujiType: isLineSuji ? 'スジ (本線)' : 'スジ違い (別線)',
         };
       });
 
-      // オッズと資金配分を即座に計算
-      const oddsMap = simulateRealisticOdds(candidates);
-      candidates.forEach((c) => {
-        c.odds = oddsMap[c.combination] || 5.0;
-      });
-      const allocated = allocateMoney(candidates, settings);
+      const alloc = allocateMoney(rawCandidates, settings);
 
       return {
-        headline: parsed.headline || `${race.venue}${race.raceNo}R AI特選予想`,
-        analysisOverview: parsed.analysisOverview || '気象条件と出走各艇の機力・展示気配をAIが分析しました。',
-        confidenceLevel: (['S', 'A', 'B', 'C'].includes(parsed.confidenceLevel)
-          ? parsed.confidenceLevel
-          : 'A') as 'S' | 'A' | 'B' | 'C',
-        weatherImpact: parsed.weatherImpact || '水面コンディションを反映済みです。',
-        axisBoat: {
-          boatNumber: parsed.axisBoat?.boatNumber || 1,
-          racerName: parsed.axisBoat?.racerName || race.boats[0]?.name || '1号艇',
-          reason: parsed.axisBoat?.reason || '機力・スタート展示ともに上位評価。',
+        headline: parsed.headline || 'ライン本線と別線の激戦。番手差しと捲りの二面作戦',
+        analysisOverview: parsed.analysisOverview || '競走得点上位ラインが主導権を握る構図。',
+        confidenceLevel: parsed.confidenceLevel || 'A',
+        weatherImpact: parsed.weatherImpact || `${race.bankLength}mバンクの直線攻防に注目。`,
+        axisBoat: parsed.axisBoat || {
+          boatNumber: scoredBoats[0]?.boatNumber || 1,
+          racerName: scoredBoats[0]?.name || '本命選手',
+          reason: '競走得点トップ・ラインの絶対的軸',
         },
-        rivalBoat: {
-          boatNumber: parsed.rivalBoat?.boatNumber || 2,
-          racerName: parsed.rivalBoat?.racerName || race.boats[1]?.name || '2号艇',
-          reason: parsed.rivalBoat?.reason || '的確な差しハンドルで追走有力。',
+        rivalBoat: parsed.rivalBoat || {
+          boatNumber: scoredBoats[1]?.boatNumber || 2,
+          racerName: scoredBoats[1]?.name || '対抗選手',
+          reason: '自力捲り一発または絶好の番手回り',
         },
-        holeBoat: parsed.holeBoat
-          ? {
-              boatNumber: parsed.holeBoat.boatNumber || 3,
-              racerName: parsed.holeBoat.racerName || race.boats[2]?.name || '3号艇',
-              reason: parsed.holeBoat.reason || '展開突いて浮上の余地十分。',
-            }
-          : undefined,
-        tacticalKey: parsed.tacticalKey || '1マークの旋回スピードと立ち上がりが勝敗を左右します。',
-        aiCandidates: allocated.updatedCandidates,
+        holeBoat: parsed.holeBoat,
+        tacticalKey: parsed.tacticalKey || '赤板先行争いと最終バックの仕掛けタイミング',
+        aiCandidates: alloc.updatedCandidates,
         rawResponse: text,
         isAiPowered: true,
       };
     } catch (err) {
-      console.warn('Gemini API call failed, falling back to local deterministic AI heuristics:', err);
+      console.warn('Gemini API call failed, falling back to local heuristic:', err);
     }
   }
 
-  // APIキー未設定または通信エラー時のフォールバック (高度な独自AIヒューリスティックエンジン)
-  return buildLocalAIHeuristics(race, scoredBoats, settings, venueInfo);
-}
+  // APIキー未設定またはエラー時の高精度ローカルヒューリスティック予想
+  const b1 = scoredBoats[0] || race.boats[0];
+  const b2 = scoredBoats[1] || race.boats[1];
+  const b3 = scoredBoats[2] || race.boats[2];
+  const b4 = scoredBoats[3] || race.boats[3];
 
-/**
- * オフライン/ローカル時でも動作する高精度AIヒューリスティック予想
- */
-function buildLocalAIHeuristics(
-  race: RaceInfo,
-  scoredBoats: ScoredBoat[],
-  settings: AppSettings,
-  venueInfo?: { name: string; waterType: string; characteristics: string }
-): AIPredictionResult {
-  const sorted = [...scoredBoats].sort((a, b) => b.rawScore - a.rawScore);
-  const b1 = sorted[0] || race.boats[0];
-  const b2 = sorted[1] || race.boats[1];
-  const b3 = sorted[2] || race.boats[2];
-  const b4 = sorted[3] || race.boats[3];
-
-  const isStrongWind = race.weather.windSpeed >= 5;
-  const isHeadWind = race.weather.windDirection.includes('向かい風');
-  const isTailWind = race.weather.windDirection.includes('追い風');
-
-  let weatherComment = `${race.weather.weather}・${race.weather.windDirection} ${race.weather.windSpeed}m/s (波高${race.weather.waveHeight}cm)。`;
-  let tacticalComment = '';
-  let headline = '';
-  let confidence: 'S' | 'A' | 'B' | 'C' = 'A';
-
-  if (b1.boatNumber === 1 && b1.winRate >= 6.5) {
-    headline = `【本命鉄板】${b1.boatNumber}号艇 ${b1.name} のイン速攻が盤石！`;
-    confidence = 'S';
-    tacticalComment = '1コースからのスタートが決まれば他艇を寄せ付けない逃走劇が濃厚。';
-  } else if (isStrongWind && isHeadWind) {
-    weatherComment += '向かい風が強くイン艇のスロー勢は加速が利きにくい傾向。まくり勢の台頭に要警戒。';
-    headline = `【波乱含み】強めの向かい風でダッシュ勢の強襲警戒！`;
-    confidence = 'B';
-    tacticalComment = 'スリットでカドが伸びれば1マークで一気に波乱となる展開も視野。';
-  } else if (isTailWind) {
-    weatherComment += '追い風基調で1マークが流れやすく、2コース・3コースの差し技が決まりやすい水面コンディション。';
-    headline = `【差し決着注意】追い風でイン流れ、${b2.boatNumber}号艇 ${b2.name} の差し切り注意`;
-    confidence = 'A';
-    tacticalComment = '1号艇がターンマークを外した瞬間、内をシャープに差す2号艇が台頭。';
-  } else {
-    headline = `【展開重視】${b1.boatNumber}号艇 ${b1.name} 軸も、次位争いは接戦模様`;
-    confidence = 'A';
-    tacticalComment = '1マークの攻防次第で2・3着の組み合わせが大きく変動する番組構成。';
-  }
-
-  // 厳選5点生成
-  const rawBets = [
-    { first: b1.boatNumber, second: b2.boatNumber, third: b3.boatNumber, score: 92, prob: 28 },
-    { first: b1.boatNumber, second: b2.boatNumber, third: b4.boatNumber, score: 85, prob: 22 },
-    { first: b1.boatNumber, second: b3.boatNumber, third: b2.boatNumber, score: 79, prob: 18 },
-    { first: b1.boatNumber, second: b3.boatNumber, third: b4.boatNumber, score: 74, prob: 15 },
-    { first: b2.boatNumber, second: b1.boatNumber, third: b3.boatNumber, score: 68, prob: 11 },
+  const localCandidates: BetCandidate[] = [
+    { rank: 1, combination: `${b1.boatNumber}-${b2.boatNumber}-${b3.boatNumber}`, first: b1.boatNumber, second: b2.boatNumber, third: b3.boatNumber, score: 92, relativeProb: 26, odds: 6.8, stake: 0, expectedReturn: 0, expectedValue: 1.77, isLineSuji: true, sujiType: 'スジ (本線)' },
+    { rank: 2, combination: `${b2.boatNumber}-${b1.boatNumber}-${b3.boatNumber}`, first: b2.boatNumber, second: b1.boatNumber, third: b3.boatNumber, score: 86, relativeProb: 22, odds: 9.4, stake: 0, expectedReturn: 0, expectedValue: 2.07, isLineSuji: true, sujiType: 'スジ (ズブズブ)' },
+    { rank: 3, combination: `${b1.boatNumber}-${b2.boatNumber}-${b4.boatNumber}`, first: b1.boatNumber, second: b2.boatNumber, third: b4.boatNumber, score: 78, relativeProb: 18, odds: 12.5, stake: 0, expectedReturn: 0, expectedValue: 2.25, isLineSuji: true, sujiType: 'スジ (本線)' },
+    { rank: 4, combination: `${b3.boatNumber}-${b1.boatNumber}-${b2.boatNumber}`, first: b3.boatNumber, second: b1.boatNumber, third: b2.boatNumber, score: 72, relativeProb: 14, odds: 18.0, stake: 0, expectedReturn: 0, expectedValue: 2.52, isLineSuji: false, sujiType: '中穴捲り' },
+    { rank: 5, combination: `${b1.boatNumber}-${b3.boatNumber}-${b2.boatNumber}`, first: b1.boatNumber, second: b3.boatNumber, third: b2.boatNumber, score: 66, relativeProb: 12, odds: 15.0, stake: 0, expectedReturn: 0, expectedValue: 1.80, isLineSuji: false, sujiType: 'スジ違い (別線)' },
+    { rank: 6, combination: `${b2.boatNumber}-${b3.boatNumber}-${b1.boatNumber}`, first: b2.boatNumber, second: b3.boatNumber, third: b1.boatNumber, score: 60, relativeProb: 8, odds: 28.0, stake: 0, expectedReturn: 0, expectedValue: 2.24, isLineSuji: false, sujiType: '中穴捲り' },
   ];
 
-  const candidates: BetCandidate[] = rawBets.map((item, index) => {
-    const combination = `${item.first}-${item.second}-${item.third}`;
-    return {
-      rank: index + 1,
-      combination,
-      first: item.first,
-      second: item.second,
-      third: item.third,
-      score: item.score,
-      relativeProb: item.prob,
-      odds: 5.0,
-      stake: 0,
-      expectedReturn: 0,
-      expectedValue: 0,
-    };
-  });
-
-  const oddsMap = simulateRealisticOdds(candidates);
-  candidates.forEach((c) => {
-    c.odds = oddsMap[c.combination] || 5.0;
-  });
-  const allocated = allocateMoney(candidates, settings);
+  const alloc = allocateMoney(localCandidates, settings);
 
   return {
-    headline,
-    analysisOverview: `当会場(${race.venue} / ${venueInfo?.characteristics || '標準水面'})における直近の機力データと各選手の勝率を機械学習スコア化。${b1.name}の展示気配が良好で、中心軸として信頼度が高いレースです。`,
-    confidenceLevel: confidence,
-    weatherImpact: weatherComment,
+    headline: `【${race.venue} ${race.raceNo}R】競走得点トップ ${b1.name} のライン中心。番手 ${b2.name} とのワンツー有力`,
+    analysisOverview: `${race.venue}(${race.bankLength}mバンク)の特性上、主導権を握るラインが優位。${b1.name}が先行または捲りで展開を作り、番手の${b2.name}が追走から抜け出すスジ車券が本線。`,
+    confidenceLevel: 'A',
+    weatherImpact: `${race.bankLength}mバンク(直線${race.straightLength}m): ${race.bankLength === 333 ? '短走路のため先行前残りに注目' : race.bankLength === 500 ? '長走路のため最後の直線での差し強襲に要警戒' : '標準的走路でスジ決着の信頼度高い'}。`,
     axisBoat: {
       boatNumber: b1.boatNumber,
       racerName: b1.name,
-      reason: `全国勝率 ${b1.winRate}、2連対率 ${b1.secondRate}%。進入コースの利を活かして先マイ有力。`,
+      reason: `競走得点${b1.score}。脚質「${b1.style}」で主導権または強力捲りを放つ絶対的本命軸。`,
     },
     rivalBoat: {
       boatNumber: b2.boatNumber,
       racerName: b2.name,
-      reason: `モーター2連対率 ${b2.motorSecondRate}% と機力上位。軸艇の懐を狙って追走。`,
+      reason: `番手からの差し脚鋭く、ワンツー折り返しまで対応可能な強力対抗。`,
     },
     holeBoat: {
       boatNumber: b3.boatNumber,
       racerName: b3.name,
-      reason: `展示タイム ${b3.exhibitionTime}秒。スリット後の伸び足が鋭く一発の破壊力あり。`,
+      reason: `別線からの一撃捲りでスジ違い波乱を演出する穴選手。`,
     },
-    tacticalKey: tacticalComment,
-    aiCandidates: allocated.updatedCandidates,
-    isAiPowered: true,
+    tacticalKey: `赤板での突っ張り先行か、鐘(ジャン)前後の叩き合いかによるペース変化`,
+    aiCandidates: alloc.updatedCandidates,
+    isAiPowered: false,
   };
 }

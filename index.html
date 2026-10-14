@@ -1,157 +1,66 @@
 <!doctype html>
-<html lang="ja">
+<html lang="ja" style="background-color: #020617; color: #f8fafc; height: 100%;">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- 1. Immediate Zombie Service Worker & Cache Purge -->
     <script>
-      // -------------------------------------------------------------
-      // Browser Extension Error Shield (MetaMask, Web3, Inpage scripts)
-      // Completely suppresses non-app external extension connection errors
-      // -------------------------------------------------------------
       (function() {
-        function isExtensionError(target) {
-          if (!target) return false;
-          try {
-            var str = '';
-            if (typeof target === 'string') {
-              str = target;
-            } else if (typeof target === 'object') {
-              if (target.message) str += target.message + ' ';
-              if (target.reason) {
-                var r = target.reason;
-                str += (r.message || r.stack || String(r)) + ' ';
-              }
-              if (target.filename) str += target.filename + ' ';
-              if (target.stack) str += target.stack + ' ';
-              if (target.error) {
-                var err = target.error;
-                str += (err.message || err.stack || String(err)) + ' ';
-              }
-              if (target.data) {
-                try { str += JSON.stringify(target.data) + ' '; } catch(e) {}
-              }
-              str += String(target) + ' ';
-            }
-            return /chrome-extension:|moz-extension:|safari-extension:|inpage\.js|metamask|Failed to connect to MetaMask/i.test(str);
-          } catch (e) {
-            return false;
-          }
-        }
-
-        // 1. Wrap EventTarget.prototype.addEventListener
-        // Ensures ANY error or unhandledrejection listener registered anywhere in the environment
-        // is wrapped and will never receive extension connection errors.
         try {
-          var origAddEventListener = EventTarget.prototype.addEventListener;
-          EventTarget.prototype.addEventListener = function(type, listener, options) {
-            if ((type === 'error' || type === 'unhandledrejection') && typeof listener === 'function') {
-              var original = listener;
-              var wrapped = function(event) {
-                if (isExtensionError(event) || (event && isExtensionError(event.reason))) {
-                  if (event && event.preventDefault) event.preventDefault();
-                  if (event && event.stopImmediatePropagation) event.stopImmediatePropagation();
-                  return;
-                }
-                return original.apply(this, arguments);
-              };
-              return origAddEventListener.call(this, type, wrapped, options);
-            }
-            return origAddEventListener.apply(this, arguments);
-          };
-        } catch (e) {}
-
-        // 2. Intercept window.onerror via Object.defineProperty
-        var _onerror = null;
-        try {
-          Object.defineProperty(window, 'onerror', {
-            configurable: true,
-            enumerable: true,
-            get: function() { return _onerror; },
-            set: function(fn) {
-              if (typeof fn !== 'function') {
-                _onerror = null;
-                return;
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+              for (var i = 0; i < registrations.length; i++) {
+                registrations[i].unregister();
               }
-              _onerror = function(msg, url, line, col, err) {
-                if (isExtensionError(msg) || isExtensionError(url) || isExtensionError(err)) {
-                  return true;
-                }
-                return fn.apply(this, arguments);
-              };
-            }
-          });
-        } catch (e) {}
-
-        // 3. Intercept window.onunhandledrejection via Object.defineProperty
-        var _onunhandled = null;
-        try {
-          Object.defineProperty(window, 'onunhandledrejection', {
-            configurable: true,
-            enumerable: true,
-            get: function() { return _onunhandled; },
-            set: function(fn) {
-              if (typeof fn !== 'function') {
-                _onunhandled = null;
-                return;
+            }).catch(function() {});
+          }
+          if ('caches' in window) {
+            caches.keys().then(function(keys) {
+              for (var i = 0; i < keys.length; i++) {
+                caches.delete(keys[i]);
               }
-              _onunhandled = function(event) {
-                if (event && (isExtensionError(event) || isExtensionError(event.reason))) {
-                  if (event.preventDefault) event.preventDefault();
-                  return true;
-                }
-                return fn.apply(this, arguments);
-              };
-            }
-          });
-        } catch (e) {}
-
-        // 4. Capture-phase fallback listeners
-        window.addEventListener('error', function(e) {
-          if (isExtensionError(e.filename) || isExtensionError(e.message) || isExtensionError(e.error)) {
-            e.stopImmediatePropagation();
-            e.preventDefault();
-            return true;
+            }).catch(function() {});
           }
-        }, true);
-
-        window.addEventListener('unhandledrejection', function(e) {
-          if (e && (isExtensionError(e.reason) || isExtensionError(e))) {
-            e.stopImmediatePropagation();
-            e.preventDefault();
-            return true;
-          }
-        }, true);
-
-        // 5. Intercept postMessage for error suppression
-        try {
-          var origPostMessage = window.postMessage;
-          window.postMessage = function(message, targetOrigin, transfer) {
-            if (isExtensionError(message)) return;
-            return origPostMessage.apply(this, arguments);
-          };
-        } catch (e) {}
-
-        // 6. Suppress console.error / console.warn for extension noise
-        var origConsoleError = console.error;
-        console.error = function() {
-          for (var i = 0; i < arguments.length; i++) {
-            if (isExtensionError(arguments[i])) return;
-          }
-          return origConsoleError.apply(console, arguments);
-        };
-
-        var origConsoleWarn = console.warn;
-        console.warn = function() {
-          for (var i = 0; i < arguments.length; i++) {
-            if (isExtensionError(arguments[i])) return;
-          }
-          return origConsoleWarn.apply(console, arguments);
-        };
+        } catch(e) {}
       })();
     </script>
-    <title>Kyotei Analyzer Pro 5</title>
+
+    <!-- 2. Immediate Error Trap to prevent permanent blank white screen -->
+    <script>
+      window.addEventListener('error', function(e) {
+        // Suppress browser extension spam
+        if (e && e.message && /chrome-extension:|moz-extension:|inpage\.js|metamask/i.test(e.message)) {
+          e.stopImmediatePropagation();
+          return;
+        }
+        var placeholder = document.getElementById('loading-placeholder');
+        if (placeholder) {
+          placeholder.innerHTML = 
+            '<div style="max-width: 480px; padding: 24px; background: rgba(15, 23, 42, 0.9); border: 1px solid #ef4444; border-radius: 12px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">' +
+              '<div style="font-size: 16px; font-weight: bold; color: #f87171; margin-bottom: 8px;">起動エラーを検知しました</div>' +
+              '<div style="font-size: 12px; color: #94a3b8; margin-bottom: 12px; line-height: 1.5;">ブラウザのキャッシュまたは古い拡張機能の通信により読み込みが中断された可能性があります。</div>' +
+              '<div style="font-family: monospace; font-size: 11px; background: #020617; padding: 10px; border-radius: 6px; border: 1px solid #334155; word-break: break-all; color: #fca5a5; margin-bottom: 16px; text-align: left;">' +
+                (e.message || 'Script error') +
+              '</div>' +
+              '<div style="display: flex; gap: 8px; justify-content: center;">' +
+                '<button onclick="window.location.reload();" style="padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer;">再読み込み</button>' +
+                '<button onclick="try{localStorage.clear();sessionStorage.clear();}catch(ex){}window.location.reload();" style="padding: 8px 16px; background: #334155; color: #e2e8f0; border: none; border-radius: 6px; font-size: 12px; cursor: pointer;">キャッシュ初期化</button>' +
+              '</div>' +
+            '</div>';
+        }
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        var reason = e && (e.reason && (e.reason.message || String(e.reason)));
+        if (reason && /chrome-extension:|moz-extension:|inpage\.js|metamask/i.test(reason)) {
+          e.stopImmediatePropagation();
+        }
+      });
+    </script>
+
+    <title>Remix Remix Remix Remix Remix Kyotei Analyzer Pro 5</title>
     <meta name="description" content="Windows 10/11対応 競艇予想・資金配分・収支シミュレーション投票支援アプリケーション" />
-    <meta property="og:title" content="Kyotei Analyzer Pro 5" />
+    <meta property="og:title" content="Remix Remix Remix Remix Remix Kyotei Analyzer Pro 5" />
     <meta property="og:description" content="Windows 10/11対応 競艇予想・資金配分・収支シミュレーション投票支援アプリケーション" />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
@@ -163,13 +72,35 @@
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Non-render-blocking font loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+    </noscript>
+
+    <style>
+      @keyframes kyoteiPulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(0.96); opacity: 0.7; }
+      }
+      @keyframes kyoteiSpin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
   </head>
-  <body class="bg-slate-900 text-slate-100 antialiased select-none overflow-hidden">
-    <div id="root"></div>
+  <body style="background-color: #020617; color: #f8fafc; margin: 0; min-height: 100vh; overflow: hidden;" class="bg-slate-950 text-slate-100 antialiased select-none font-sans">
+    <div id="root" style="min-height: 100vh; display: flex; flex-direction: column;">
+      <!-- Elegant fast-paint startup placeholder -->
+      <div id="loading-placeholder" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans JP', sans-serif; background-color: #020617; color: #94a3b8; padding: 20px;">
+        <div style="width: 44px; height: 44px; border: 3px solid rgba(56, 189, 248, 0.15); border-top-color: #38bdf8; border-radius: 50%; animation: kyoteiSpin 0.75s linear infinite; margin-bottom: 20px;"></div>
+        <div style="font-size: 15px; font-weight: 700; color: #f1f5f9; letter-spacing: 0.05em; margin-bottom: 6px;">Kyotei Analyzer Pro 5</div>
+        <div style="font-size: 11px; color: #64748b; letter-spacing: 0.02em;">競艇予想・ライン展開分析・資金配分・投票支援システム</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

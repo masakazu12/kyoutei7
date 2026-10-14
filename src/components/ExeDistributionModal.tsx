@@ -39,9 +39,9 @@ export const ExeDistributionModal: React.FC<ExeDistributionModalProps> = ({ onCl
     const batchContent = `@echo off
 chcp 65001 > nul
 echo ========================================================
-echo   Kyotei Analyzer Pro 5 - Windows EXE 生成ビルダー
+echo   Keirin Analyzer Pro 5 - Windows EXE 生成ビルダー
 echo   Windows 10 / 11 64bit 対応
-echo ========================================================
+========================================================
 echo.
 echo [1/3] 依存パッケージのインストール中...
 call npm install
@@ -73,7 +73,7 @@ echo.
 echo ========================================================
 echo   【成功】 Windows 実行可能ファイル (.exe) の生成が完了しました！
 echo   出力先: dist-electron フォルダ内
-echo   実行ファイル: KyoteiAnalyzerPro5-1.0.0-x64.exe
+echo   実行ファイル: KeirinAnalyzerPro5-1.0.0-x64.exe
 echo ========================================================
 echo.
 pause
@@ -81,7 +81,7 @@ pause
 
     // README_WINDOWS_EXE.txt の内容
     const readmeContent = `========================================================
- Kyotei Analyzer Pro 5 (Ver. 1.0)
+ Keirin Analyzer Pro 5 (Ver. 1.0)
  Windows 10 / 11 向け EXE 実行ファイル生成ガイド
 ========================================================
 
@@ -92,12 +92,12 @@ Microsoft Edge または Google Chrome で本アプリを開いた状態で、
 → Windowsデスクトップおよびスタートメニューに専用アイコンが作成され、
    独立したデスクトップアプリケーション（.exe形式）としてネイティブ動作します。
 
-【方法 2：自己完結型 KyoteiAnalyzerPro5.exe をビルドする手順】
+【方法 2：自己完結型 KeirinAnalyzerPro5.exe をビルドする手順】
 1. PCに Node.js (v18以上推奨) がインストールされていることを確認します。
    （https://nodejs.org/ から無料ダウンロード可能）
 2. 本フォルダを展開し、中の「build-exe.bat」をダブルクリックします。
 3. 自動的にビルドが行われ、dist-electron フォルダ内に
-   「KyoteiAnalyzerPro5-1.0.0-x64.exe」が生成されます。
+   「KeirinAnalyzerPro5-1.0.0-x64.exe」が生成されます。
 4. 生成された EXE ファイルは単体で USB メモリやデスクトップから直接起動可能です。
 
 【動作環境】
@@ -145,11 +145,11 @@ Microsoft Edge または Google Chrome で本アプリを開いた状態で、
               <h3 className="text-sm font-bold text-slate-100 flex items-center gap-2">
                 <span>Windows 10 / 11 アプリケーション (EXE化) 提供センター</span>
                 <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-950 text-blue-300 border border-blue-700">
-                  Ver 1.0
+                  Ver 1.0 (競輪)
                 </span>
               </h3>
               <p className="text-[11px] text-slate-400">
-                Kyotei Analyzer Pro 5 を独立したデスクトップアプリとして利用・配布するための各種方法
+                Keirin Analyzer Pro 5 を独立したデスクトップアプリとして利用・配布するための各種方法
               </p>
             </div>
           </div>

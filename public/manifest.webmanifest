@@ -1,0 +1,32 @@
+{
+  "name": "Kyotei Analyzer Pro 5",
+  "short_name": "KyoteiPro5",
+  "description": "Windows 10/11対応 競艇予想・資金配分・収支シミュレーション投票支援アプリケーション",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "lang": "ja",
+  "scope": "/",
+  "id": "/",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

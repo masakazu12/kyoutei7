@@ -197,7 +197,7 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                   setTimeout(() => setNotificationMsg(null), 3000);
                 }}
                 className="flex items-center gap-1 px-2.5 py-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-[11px] rounded transition-colors shadow-xs cursor-pointer"
-                title="全国24場の公式過去レース確定実データを一括インポート"
+                title="全国43競輪場の公式過去レース確定実データを一括インポート"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>実データ読込</span>

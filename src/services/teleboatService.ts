@@ -569,11 +569,11 @@ try {
 }
 
 /**
- * テレボート公式投票ポータルを開く（PC版 / スマホ版）
+ * 競輪公式投票ポータルを開く（KEIRIN.JP / Winticket）
  */
 export function openTeleboatWebPortal(portalType: TeleboatPortalType = 'PC'): void {
   if (typeof window !== 'undefined') {
-    const url = portalType === 'SP' ? 'https://spweb.brtb.jp/' : 'https://ib.mbrace.or.jp/';
+    const url = portalType === 'SP' ? 'https://www.winticket.jp/' : 'https://keirin.jp/';
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 }

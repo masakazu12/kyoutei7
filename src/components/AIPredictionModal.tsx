@@ -58,7 +58,7 @@ export const AIPredictionModal: React.FC<AIPredictionModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-indigo-200 to-pink-300">
-                  Gemini 競艇AI特選予想 (AI Analysis Pro)
+                  Gemini 競輪AI特選予想 (Keirin AI Analysis Pro)
                 </h3>
                 <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-950 text-purple-300 border border-purple-700 font-mono">
                   Gemini 3.8 Flash
@@ -93,10 +93,10 @@ export const AIPredictionModal: React.FC<AIPredictionModalProps> = ({
             <div className="py-16 flex flex-col items-center justify-center space-y-3 text-center">
               <div className="w-10 h-10 border-3 border-purple-500/30 border-t-purple-400 rounded-full animate-spin"></div>
               <div className="font-bold text-slate-200 text-sm">
-                AIが展示タイム・水面コンディション・選手機力を深層分析中...
+                AIがライン並び・競走得点・バンク特性・主導権争いを深層分析中...
               </div>
               <div className="text-slate-400 text-xs">
-                全国24場のコース進入傾向とモーター勝率から最適買い目を計算しています
+                全国43競輪場のバンク周長・カント角・スジ車券期待値から最適買い目を計算しています
               </div>
             </div>
           ) : !aiResult ? (
@@ -122,22 +122,22 @@ export const AIPredictionModal: React.FC<AIPredictionModalProps> = ({
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Wind className="w-3.5 h-3.5 text-amber-400" />
-                    <span>水面環境: {aiResult.weatherImpact}</span>
+                    <span>バンク特性: {aiResult.weatherImpact}</span>
                   </div>
                 </div>
               </div>
 
-              {/* 注目艇ピックアップ (軸艇・対抗艇・穴艇) */}
+              {/* 注目選手ピックアップ (軸選手・対抗選手・穴選手) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-                {/* 軸艇 */}
+                {/* 軸選手 */}
                 <div className="bg-slate-950 p-3 rounded border border-purple-900/60 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[10px] font-bold text-purple-400 bg-purple-950/80 px-1.5 py-0.5 rounded border border-purple-800">
-                        ◎ 本命軸艇
+                        ◎ 本命軸車
                       </span>
                       <span className="text-xs font-mono font-bold text-slate-300">
-                        {aiResult.axisBoat.boatNumber}号艇
+                        {aiResult.axisBoat.boatNumber}番車
                       </span>
                     </div>
                     <div className="flex items-center gap-2 my-1">
@@ -152,15 +152,15 @@ export const AIPredictionModal: React.FC<AIPredictionModalProps> = ({
                   </div>
                 </div>
 
-                {/* 対抗艇 */}
+                {/* 対抗選手 */}
                 <div className="bg-slate-950 p-3 rounded border border-slate-800 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[10px] font-bold text-blue-400 bg-blue-950/80 px-1.5 py-0.5 rounded border border-blue-800">
-                        ○ 対抗艇
+                        ○ 対抗車
                       </span>
                       <span className="text-xs font-mono font-bold text-slate-300">
-                        {aiResult.rivalBoat.boatNumber}号艇
+                        {aiResult.rivalBoat.boatNumber}番車
                       </span>
                     </div>
                     <div className="flex items-center gap-2 my-1">
@@ -175,7 +175,7 @@ export const AIPredictionModal: React.FC<AIPredictionModalProps> = ({
                   </div>
                 </div>
 
-                {/* 穴艇 */}
+                {/* 穴選手 */}
                 <div className="bg-slate-950 p-3 rounded border border-slate-800 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-1">
@@ -184,7 +184,7 @@ export const AIPredictionModal: React.FC<AIPredictionModalProps> = ({
                       </span>
                       {aiResult.holeBoat && (
                         <span className="text-xs font-mono font-bold text-slate-300">
-                          {aiResult.holeBoat.boatNumber}号艇
+                          {aiResult.holeBoat.boatNumber}番車
                         </span>
                       )}
                     </div>

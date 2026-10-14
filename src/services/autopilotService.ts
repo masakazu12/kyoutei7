@@ -4,7 +4,13 @@
  */
 
 import { AutoPilotConfig, AutoPilotStage, AutoPilotLogItem, DayStatistics } from '../types/kyotei';
-import { getStandardDeadlineTime } from './deadlineService';
+import { VENUES } from '../constants/venues';
+import {
+  getStandardDeadlineTime,
+  MIDNIGHT_VENUES,
+  NIGHTER_VENUES,
+  MORNING_VENUES,
+} from './deadlineService';
 
 export interface StageMeta {
   stage: AutoPilotStage;
@@ -45,10 +51,10 @@ export const AUTOPILOT_STAGE_META: Record<AutoPilotStage, StageMeta> = {
   },
   VOTING: {
     stage: 'VOTING',
-    label: 'テレボート自動投票',
+    label: '公式投票連携',
     badgeClass: 'bg-purple-950/80 text-purple-300 border-purple-600',
     dotClass: 'bg-purple-400 animate-ping',
-    description: 'テレボートAPIへ投票リクエストを送信中...',
+    description: '競輪投票システムへ投票指図を送信中...',
   },
   WAITING_RESULT: {
     stage: 'WAITING_RESULT',
@@ -194,34 +200,9 @@ export function evaluateAutoPilotSafety(params: {
 }
 
 /**
- * 全国24競艇場 完全巡回リスト
+ * 全国43競輪場 完全巡回リスト
  */
-export const ALL_24_VENUES: string[] = [
-  '住之江',
-  '大村',
-  '桐生',
-  '平和島',
-  '蒲郡',
-  '戸田',
-  '丸亀',
-  '鳴門',
-  '徳山',
-  '尼崎',
-  '児島',
-  '宮島',
-  '下関',
-  '若松',
-  '芦屋',
-  '福岡',
-  '唐津',
-  '江戸川',
-  '多摩川',
-  '浜名湖',
-  '常滑',
-  '津',
-  '三国',
-  'びわこ',
-];
+export const ALL_24_VENUES: string[] = VENUES.map((v) => v.name);
 
 export const DEFAULT_PATROL_VENUES: string[] = ALL_24_VENUES;
 
@@ -230,7 +211,7 @@ export interface PatrolRaceItem {
   raceNo: number;
   deadlineTime: string;
   deadlineMinutes: number;
-  category: 'モーニング' | 'デイ' | 'ナイター';
+  category: 'モーニング' | 'デイ' | 'ナイター' | 'ミッドナイト';
   key: string;
   isVoted: boolean;
 }
@@ -263,7 +244,7 @@ export function buildPatrolQueue(params: {
   // 1. 会場プールの決定
   let venuePool: string[] = [];
   if (config.targetMode === 'single_venue') {
-    venuePool = [currentVenue || '住之江'];
+    venuePool = [currentVenue || '平塚'];
   } else {
     venuePool =
       config.targetVenues && config.targetVenues.length > 0
@@ -282,9 +263,10 @@ export function buildPatrolQueue(params: {
     return (h || 0) * 60 + (m || 0);
   };
 
-  const getCategory = (v: string): 'モーニング' | 'デイ' | 'ナイター' => {
-    if (['鳴門', '徳山', '芦屋', '唐津', '三国'].includes(v)) return 'モーニング';
-    if (['桐生', '蒲郡', '住之江', '丸亀', '下関', '若松', '大村'].includes(v)) return 'ナイター';
+  const getCategory = (v: string): 'モーニング' | 'デイ' | 'ナイター' | 'ミッドナイト' => {
+    if (MIDNIGHT_VENUES.includes(v)) return 'ミッドナイト';
+    if (NIGHTER_VENUES.includes(v)) return 'ナイター';
+    if (MORNING_VENUES.includes(v)) return 'モーニング';
     return 'デイ';
   };
 

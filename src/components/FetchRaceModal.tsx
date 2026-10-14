@@ -64,23 +64,23 @@ export const FetchRaceModal: React.FC<FetchRaceModalProps> = ({
     setErrorMessage(null);
 
     try {
-      setFetchStep('ボートレース公式番組データサーバーへ接続中...');
+      setFetchStep('競輪公式番組データサーバーへ接続中...');
       await new Promise((r) => setTimeout(r, 200));
 
-      setFetchStep(`【${selectedVenue}】第${selectedRaceNo}R 出走表・選手勝率データを取得中...`);
+      setFetchStep(`【${selectedVenue}競輪】第${selectedRaceNo}R 出走表・競走得点・ライン並びデータを取得中...`);
       await new Promise((r) => setTimeout(r, 250));
 
-      setFetchStep('モーター番号・2連対率・抽選ボート成績を取得中...');
+      setFetchStep('選手級班・競走得点・ギヤ倍数・脚質・B数を取得中...');
       await new Promise((r) => setTimeout(r, 200));
 
-      setFetchStep('直前気配（進入コース・展示タイム）及び気象条件を取得中...');
+      setFetchStep('バンク周長(333m/400m/500m)特性及び気象条件を取得中...');
       const raceData = await fetchRaceCard({
         date: selectedDate,
         venueName: selectedVenue,
         raceNo: selectedRaceNo,
       });
 
-      setFetchStep('取得完了！番組表を反映しています...');
+      setFetchStep('取得完了！出走表番組データを反映しています...');
       await new Promise((r) => setTimeout(r, 150));
 
       onRaceFetched(raceData);
@@ -179,10 +179,14 @@ export const FetchRaceModal: React.FC<FetchRaceModalProps> = ({
                         <span className="font-bold text-sm text-slate-100">{v.venueName}</span>
                         <span
                           className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
-                            v.grade === 'SG'
-                              ? 'bg-amber-500 text-slate-950'
-                              : v.grade === 'G1'
+                            v.grade === 'GP'
+                              ? 'bg-amber-400 text-slate-950 font-black'
+                              : v.grade === 'GI'
+                              ? 'bg-rose-600 text-white font-bold'
+                              : v.grade === 'GII'
                               ? 'bg-blue-600 text-white'
+                              : v.grade === 'GIII'
+                              ? 'bg-emerald-600 text-white'
                               : 'bg-slate-800 text-slate-300'
                           }`}
                         >
@@ -201,10 +205,10 @@ export const FetchRaceModal: React.FC<FetchRaceModalProps> = ({
             )}
           </div>
 
-          {/* 全24場からの手動選択（その他の開催場） */}
+          {/* 全国43競輪場からの手動選択（その他の開催場） */}
           <div className="pt-2 border-t border-slate-800">
             <span className="text-[11px] text-slate-400 block mb-1.5">
-              全国24場から直接指定する場合:
+              全国43競輪場から直接指定する場合:
             </span>
             <div className="grid grid-cols-6 sm:grid-cols-8 gap-1">
               {VENUES.map((v) => (

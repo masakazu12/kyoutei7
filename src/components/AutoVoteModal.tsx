@@ -176,7 +176,7 @@ export const AutoVoteModal: React.FC<AutoVoteModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-bold text-slate-100">
-                  テレボート自動投票マネージャー (Auto-Voting System)
+                  競輪公式自動投票マネージャー (KEIRIN.JP / ネット投票連携)
                 </h3>
                 <span
                   className={`text-[10px] px-2 py-0.5 rounded font-bold border ${

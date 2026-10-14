@@ -20,7 +20,7 @@ export function exportHistoryToCsv(history: RaceHistoryRecord[], baseDateStr?: s
     'レース番号',
     'レース名',
     '判定状態',
-    '舟券種別',
+    '車券種別',
     '購入点数',
     '総投資額(円)',
     '確定着順',
@@ -44,16 +44,15 @@ export function exportHistoryToCsv(history: RaceHistoryRecord[], baseDateStr?: s
   const betTypeNames: Record<string, string> = {
     '3t': '3連単',
     '3f': '3連複',
-    '2t': '2連単',
-    '2f': '2連複',
-    '1t': '単勝',
-    '1f': '複勝',
-    'wide': '拡連複',
+    '2t': '2車単',
+    '2f': '2車複',
+    '1t': '車番単勝',
+    'wide': 'ワイド',
   };
 
-  history.forEach(item => {
+  history.forEach((item) => {
     const betsDetail = item.bets
-      .map(b => `${b.combination}(${b.odds}倍:${b.stake}円${b.isHit ? ':的中' : ''})`)
+      .map((b) => `${b.combination}(${b.odds}倍:${b.stake}円${b.isHit ? ':的中' : ''})`)
       .join(' / ');
 
     const betTypeName = item.betType ? (betTypeNames[item.betType] || item.betType) : '3連単';
@@ -93,9 +92,9 @@ export function exportHistoryToCsv(history: RaceHistoryRecord[], baseDateStr?: s
   const dateFormatted = baseDateStr
     ? baseDateStr.replace(/-/g, '')
     : `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-  
+
   link.setAttribute('href', url);
-  link.setAttribute('download', `KyoteiHistory_${dateFormatted}.csv`);
+  link.setAttribute('download', `KeirinHistory_${dateFormatted}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

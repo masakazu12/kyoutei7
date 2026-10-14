@@ -122,7 +122,18 @@ export default function App() {
     try {
       const saved = localStorage.getItem('kyotei_analyzer_settings_v1');
       if (saved) {
-        return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          return {
+            ...DEFAULT_SETTINGS,
+            ...parsed,
+            scoreWeight: Number(parsed.scoreWeight) || DEFAULT_SETTINGS.scoreWeight,
+            winRateWeight: Number(parsed.winRateWeight) || DEFAULT_SETTINGS.winRateWeight,
+            lineWeight: Number(parsed.lineWeight) || DEFAULT_SETTINGS.lineWeight,
+            bankWeight: Number(parsed.bankWeight) || DEFAULT_SETTINGS.bankWeight,
+            bWeight: Number(parsed.bWeight) || DEFAULT_SETTINGS.bWeight,
+          };
+        }
       }
     } catch (e) {
       console.error('Settings load error:', e);
@@ -135,12 +146,15 @@ export default function App() {
     try {
       const saved = localStorage.getItem('kyotei_analyzer_history_v2');
       if (saved !== null) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
       }
       const savedV1 = localStorage.getItem('kyotei_analyzer_history_v1');
       if (savedV1 !== null) {
         const parsed = JSON.parse(savedV1);
-        if (parsed.length >= 8) return parsed;
+        if (Array.isArray(parsed) && parsed.length >= 8) return parsed;
       }
     } catch (e) {
       console.error('History load error:', e);
@@ -154,7 +168,9 @@ export default function App() {
   // 履歴変更時の自動永続化
   useEffect(() => {
     try {
-      localStorage.setItem('kyotei_analyzer_history_v2', JSON.stringify(history));
+      if (Array.isArray(history)) {
+        localStorage.setItem('kyotei_analyzer_history_v2', JSON.stringify(history));
+      }
     } catch (e) {
       console.error('History sync error:', e);
     }
@@ -164,9 +180,28 @@ export default function App() {
   const [race, setRace] = useState<RaceInfo>(() => {
     const d = new Date();
     const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const base = PRESET_RACES && PRESET_RACES.length > 0 ? PRESET_RACES[0] : null;
+    if (base) {
+      return {
+        ...base,
+        date: todayStr,
+      };
+    }
     return {
-      ...PRESET_RACES[0],
+      id: 'hiratsuka-12r-default',
       date: todayStr,
+      venue: '平塚',
+      raceNo: 12,
+      raceTitle: '第12R 決勝',
+      grade: 'GI',
+      roundCount: 5,
+      carCount: 9,
+      bankLength: 400,
+      straightLength: 54.2,
+      deadlineTime: '16:30',
+      weather: { weather: '晴', windDirection: '追い風', windSpeed: 2.0, temperature: 20 },
+      lines: [],
+      boats: [],
     };
   });
 
@@ -440,7 +475,8 @@ export default function App() {
         ev.data.type === 'KYOTEI_EXTENSION_INSTALLED' ||
         ev.data.type === 'KYOTEI_EXTENSION_PONG' ||
         ev.data.type === 'KYOTEI_EXTENSION_HEARTBEAT' ||
-        ev.data.type === 'KYOTEI_EXTENSION_READY'
+        ev.data.type === 'KYOTEI_EXTENSION_READY' ||
+        ev.data.type === 'KYOTEI_DIAGNOSTIC_PONG'
       ) {
         setIsRealExtensionDetected(true);
       }
@@ -461,9 +497,11 @@ export default function App() {
     window.addEventListener('KYOTEI_EXTENSION_INSTALLED', onCustomEvent);
     window.addEventListener('KYOTEI_EXTENSION_PONG', onCustomEvent);
     window.addEventListener('KYOTEI_EXTENSION_HEARTBEAT', onCustomEvent);
+    window.addEventListener('KYOTEI_DIAGNOSTIC_PONG', onCustomEvent);
     document.addEventListener('KYOTEI_EXTENSION_INSTALLED', onCustomEvent);
     document.addEventListener('KYOTEI_EXTENSION_PONG', onCustomEvent);
     document.addEventListener('KYOTEI_EXTENSION_HEARTBEAT', onCustomEvent);
+    document.addEventListener('KYOTEI_DIAGNOSTIC_PONG', onCustomEvent);
 
     // C. BroadcastChannel リスナー
     let bc: BroadcastChannel | null = null;
@@ -476,7 +514,8 @@ export default function App() {
             ev.data &&
             (ev.data.type === 'KYOTEI_EXTENSION_INSTALLED' ||
               ev.data.type === 'KYOTEI_EXTENSION_PONG' ||
-              ev.data.type === 'KYOTEI_EXTENSION_HEARTBEAT')
+              ev.data.type === 'KYOTEI_EXTENSION_HEARTBEAT' ||
+              ev.data.type === 'KYOTEI_DIAGNOSTIC_PONG')
           ) {
             setIsRealExtensionDetected(true);
           }
@@ -555,10 +594,10 @@ export default function App() {
     showToast('全国主要場の公式確定実データパックをインポートしました！会場別統計に即時反映されています');
   }, [showToast]);
 
-  // 艇スコア計算 (仕様 7.3)
+  // 選手スコア計算 (競輪 競走得点・バンク適性・ライン位置)
   const scoredBoats = useMemo(() => {
-    return calculateBoatScores(race.boats, settings);
-  }, [race.boats, settings]);
+    return calculateBoatScores(race.boats, settings, race.bankLength);
+  }, [race.boats, settings, race.bankLength]);
 
   // 見送り・停止・NG判定 (仕様 9)
   const judgment: JudgmentResult = useMemo(() => {
@@ -584,7 +623,7 @@ export default function App() {
     });
   }, [race, candidates, settings, stats.netProfit, manualStop, lastFinishedStatus]);
 
-  // 予想実行処理 (可変券種・可変点数対応)
+  // 予想実行処理 (可変車券種・可変点数対応)
   const handleRunPrediction = useCallback(() => {
     setLastFinishedStatus(null);
     const existingOddsMap: Record<string, number> = {};
@@ -592,7 +631,13 @@ export default function App() {
       if (c.odds > 0) existingOddsMap[c.combination] = c.odds;
     });
 
-    const generated = generateBetsByType(scoredBoats, selectedBetType, selectedPointCount, existingOddsMap);
+    const generated = generateBetsByType(
+      scoredBoats,
+      selectedBetType,
+      selectedPointCount,
+      existingOddsMap,
+      race.bankLength
+    );
 
     // オッズが未設定の場合はリアルな市場オッズを自動シミュレート
     const oddsMap = simulateRealisticOdds(generated, selectedBetType);
@@ -606,17 +651,17 @@ export default function App() {
     const alloc = allocateMoney(generated, settings);
     setCandidates(alloc.updatedCandidates);
     setAllocationInfo(alloc);
-  }, [scoredBoats, selectedBetType, selectedPointCount, candidates, settings]);
+  }, [scoredBoats, selectedBetType, selectedPointCount, candidates, settings, race.bankLength]);
 
   // 券種切り替えハンドラ
   const handleChangeBetType = useCallback((newType: BetType) => {
     setSelectedBetType(newType);
-    const maxPts = BET_TYPE_LABELS[newType]?.maxPoints ?? 12;
+    const maxPts = BET_TYPE_LABELS[newType]?.maxPoints ?? 18;
     const newPts = Math.min(selectedPointCount, maxPts);
     setSelectedPointCount(newPts);
     setLastFinishedStatus(null);
 
-    const generated = generateBetsByType(scoredBoats, newType, newPts);
+    const generated = generateBetsByType(scoredBoats, newType, newPts, {}, race.bankLength);
     const oddsMap = simulateRealisticOdds(generated, newType);
     generated.forEach((c) => {
       c.odds = oddsMap[c.combination] || 5.0;
@@ -624,15 +669,15 @@ export default function App() {
     const alloc = allocateMoney(generated, settings);
     setCandidates(alloc.updatedCandidates);
     setAllocationInfo(alloc);
-    showToast(`舟券種別を【${BET_TYPE_LABELS[newType].label}】(${newPts}点) に設定しました`);
-  }, [scoredBoats, selectedPointCount, settings, showToast]);
+    showToast(`車券種別を【${BET_TYPE_LABELS[newType].label}】(${newPts}点) に設定しました`);
+  }, [scoredBoats, selectedPointCount, settings, race.bankLength, showToast]);
 
   // 購入点数切り替えハンドラ
   const handleChangePointCount = useCallback((newPts: number) => {
     setSelectedPointCount(newPts);
     setLastFinishedStatus(null);
 
-    const generated = generateBetsByType(scoredBoats, selectedBetType, newPts);
+    const generated = generateBetsByType(scoredBoats, selectedBetType, newPts, {}, race.bankLength);
     const oddsMap = simulateRealisticOdds(generated, selectedBetType);
     generated.forEach((c) => {
       c.odds = oddsMap[c.combination] || 5.0;
@@ -2491,9 +2536,9 @@ export default function App() {
           </div>
         )}
 
-        {/* 2カラムレイアウト: 左 艇データ(エリアB) / 右 状態スタンプ(エリアE) & 配分設定 */}
+        {/* 2カラムレイアウト: 左 出走選手データ(エリアB) / 右 状態スタンプ(エリアE) & 配分設定 */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 items-start">
-          {/* 左カラム: 出走表 1〜6号艇データ */}
+          {/* 左カラム: 出走表 1〜7/9番車 選手データ */}
           <div className="lg:col-span-8">
             <BoatTable
               boats={race.boats}
@@ -2538,11 +2583,12 @@ export default function App() {
           </div>
         </div>
 
-        {/* エリア C: 可変券種・可変点数対応 予想候補 & 資金配分テーブル */}
+        {/* エリア C: 可変車券種・可変点数対応 予想候補 & 資金配分テーブル */}
         <PredictionSection
           candidates={candidates}
           currentBetType={selectedBetType}
           pointCount={selectedPointCount}
+          lines={race.lines}
           onChangeBetType={handleChangeBetType}
           onChangePointCount={handleChangePointCount}
           onUpdateOdds={handleUpdateOdds}
@@ -2563,7 +2609,7 @@ export default function App() {
         />
       </main>
 
-      {/* 5. エリア F: 収支・統計管理バー (固定フッター & 全国24場別収支 & 10走推移グラフ) */}
+      {/* 5. エリア F: 収支・統計管理バー (固定フッター & 全国43競輪場別収支 & 10走推移グラフ) */}
       <footer className="p-2 border-t border-slate-800 bg-slate-950">
         <StatisticsBar
           stats={stats}
